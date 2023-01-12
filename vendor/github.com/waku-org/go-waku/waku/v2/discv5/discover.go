@@ -3,6 +3,7 @@ package discv5
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/rand"
 	"net"
 	"sync"
@@ -300,6 +301,7 @@ func (d *DiscoveryV5) iterate(ctx context.Context, iterator enode.Iterator, limi
 
 		exists := iterator.Next()
 		if !exists {
+			fmt.Println("ERROR!!!!!!!!!!!!!! EXITING DISCv5 LOOP")
 			break
 		}
 
@@ -317,6 +319,11 @@ func (d *DiscoveryV5) iterate(ctx context.Context, iterator enode.Iterator, limi
 
 		d.peerCache.Lock()
 		for _, p := range peerAddrs {
+			_, ok := d.peerCache.recs[p.ID]
+			if ok {
+				continue
+			}
+			fmt.Println("FOUND VIA DISCV5: ", p.Addrs[0], " PEERS IN CACHE: ", len(d.peerCache.recs))
 			d.peerCache.recs[p.ID] = PeerRecord{
 				expire: time.Now().Unix() + 3600, // Expires in 1hr
 				Peer:   p,
@@ -407,8 +414,11 @@ func (d *DiscoveryV5) FindPeers(ctx context.Context, topic string, opts ...disco
 		return nil, err
 	}
 
+	fmt.Println("RETRIEVED PEERS FROM DISCV5 ::::::::::::::::::::::")
+
 	chPeer := make(chan peer.AddrInfo, len(records))
 	for _, r := range records {
+		fmt.Println("- ", r.Peer.Addrs[0])
 		chPeer <- r.Peer
 	}
 

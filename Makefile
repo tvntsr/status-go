@@ -150,7 +150,7 @@ statusgo-library: ##@cross-compile Build status-go as static library for current
 	mkdir -p $(GOBIN)/statusgo-lib
 	go run cmd/library/*.go > $(GOBIN)/statusgo-lib/main.go
 	@echo "Building static library..."
-	go build \
+	go build -mod vendor \
 		-tags '$(BUILD_TAGS)' \
 		$(BUILD_FLAGS) \
 		-buildmode=c-archive \
@@ -164,7 +164,7 @@ statusgo-shared-library: ##@cross-compile Build status-go as shared library for 
 	mkdir -p $(GOBIN)/statusgo-lib
 	go run cmd/library/*.go > $(GOBIN)/statusgo-lib/main.go
 	@echo "Building shared library..."
-	$(GOBIN_SHARED_LIB_CFLAGS) $(GOBIN_SHARED_LIB_CGO_LDFLAGS) go build \
+	$(GOBIN_SHARED_LIB_CFLAGS) $(GOBIN_SHARED_LIB_CGO_LDFLAGS) go build  -mod vendor \
 		-tags '$(BUILD_TAGS)' \
 		$(BUILD_FLAGS) \
 		-buildmode=c-shared \
