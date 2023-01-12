@@ -287,7 +287,7 @@ func (d *DiscoveryV5) Advertise(ctx context.Context, ns string, opts ...discover
 	return 20 * time.Minute, nil
 }
 
-func (d *DiscoveryV5) iterate(ctx context.Context, iterator enode.Iterator, limit int) {
+func (d *DiscoveryV5) iterate(ctx context.Context, iterator enode.Iterator, limit int, outOfPeers chan struct{}) {
 	defer d.wg.Done()
 
 	for {
@@ -302,6 +302,7 @@ func (d *DiscoveryV5) iterate(ctx context.Context, iterator enode.Iterator, limi
 		exists := iterator.Next()
 		if !exists {
 			fmt.Println("ERROR!!!!!!!!!!!!!! EXITING DISCv5 LOOP")
+			outOfPeers <- struct{}{}
 			break
 		}
 
@@ -357,9 +358,21 @@ func (d *DiscoveryV5) runDiscoveryV5Loop(ctx context.Context) {
 
 	d.wg.Add(1)
 
-	go d.iterate(ctx, iterator, MaxPeersToDiscover)
+	ch := make(chan struct{}, 1)
+	ch <- struct{}{} // Initial execution
 
-	<-ctx.Done()
+restartLoop:
+	for {
+		select {
+		case <-ch:
+			fmt.Println("STARTING DISCV5 LOOP! _---------------------")
+			go d.iterate(ctx, iterator, MaxPeersToDiscover, ch)
+			time.Sleep(10 * time.Second)
+		case <-ctx.Done():
+			close(ch)
+			break restartLoop
+		}
+	}
 
 	d.log.Warn("Discv5 loop stopped")
 }
