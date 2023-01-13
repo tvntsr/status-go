@@ -2,7 +2,6 @@ package backoff
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -67,7 +66,6 @@ func (c *BackoffConnector) Connect(ctx context.Context, peerCh <-chan peer.AddrI
 				now := time.Now()
 				if now.Before(tv.nextTry) {
 					c.mux.Unlock()
-					fmt.Println("Can't connect to ", pi.ID, " until ", tv.nextTry)
 					continue
 				}
 
@@ -85,7 +83,6 @@ func (c *BackoffConnector) Connect(ctx context.Context, peerCh <-chan peer.AddrI
 
 				err := c.host.Connect(ctx, pi)
 				if err != nil {
-					fmt.Println("Error connecting to pubsub peer: ", pi.ID, " Error: ", err.Error())
 					log.Debugf("Error connecting to pubsub peer %s: %s", pi.ID, err.Error())
 					return
 				}

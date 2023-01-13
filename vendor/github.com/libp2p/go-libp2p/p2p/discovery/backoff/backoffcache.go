@@ -109,8 +109,6 @@ func (d *BackoffDiscovery) Advertise(ctx context.Context, ns string, opts ...dis
 }
 
 func (d *BackoffDiscovery) FindPeers(ctx context.Context, ns string, opts ...discovery.Option) (<-chan peer.AddrInfo, error) {
-	fmt.Println("Finding Peers::::::::::::::")
-
 	// Get options
 	var options discovery.Options
 	err := options.Apply(opts...)

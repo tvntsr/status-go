@@ -70,7 +70,6 @@ import (
 	"github.com/status-im/status-go/wakuv2/common"
 	"github.com/status-im/status-go/wakuv2/persistence"
 
-	"github.com/libp2p/go-libp2p/core/discovery"
 	node "github.com/waku-org/go-waku/waku/v2/node"
 	"github.com/waku-org/go-waku/waku/v2/protocol/pb"
 	"github.com/waku-org/go-waku/waku/v2/protocol/store"
@@ -254,7 +253,7 @@ func New(nodeKey string, fleet string, cfg *Config, logger *zap.Logger, appDB *s
 			return nil, err
 		}
 
-		opts = append(opts, node.WithDiscoveryV5(cfg.UDPPort, bootnodes, cfg.AutoUpdate, pubsub.WithDiscoveryOpts(discovery.Limit(cfg.DiscoveryLimit))))
+		opts = append(opts, node.WithDiscoveryV5(cfg.UDPPort, bootnodes, cfg.AutoUpdate))
 
 		// Peer exchange requires DiscV5 to run (might change in future versions of the protocol)
 		if cfg.PeerExchange {
@@ -306,6 +305,7 @@ func New(nodeKey string, fleet string, cfg *Config, logger *zap.Logger, appDB *s
 		if err != nil {
 			return nil, err
 		}
+		go waku.node.DiscV5().Discover(ctx, cfg.DiscoveryLimit)
 	}
 	waku.wg.Add(4)
 
@@ -1303,7 +1303,13 @@ func (w *Waku) StartDiscV5() error {
 		return errors.New("discv5 is not setup")
 	}
 
-	return w.node.DiscV5().Start(context.Background())
+	err := w.node.DiscV5().Start(context.Background())
+	if err != nil {
+		return err
+	}
+
+	w.node.DiscV5().Discover(context.Background(), w.settings.DiscoveryLimit)
+	return nil
 }
 
 func (w *Waku) StopDiscV5() error {

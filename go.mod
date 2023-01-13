@@ -76,7 +76,7 @@ require github.com/fogleman/gg v1.3.0
 require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/meirf/gopart v0.0.0-20180520194036-37e9492a85a8
-	github.com/waku-org/go-waku v0.3.2-0.20230110124657-7d2a0ac0e25f
+	github.com/waku-org/go-waku v0.3.2-0.20230112230958-d4fec8171c12
 )
 
 require (
@@ -235,7 +235,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
-	github.com/urfave/cli/v2 v2.20.2 // indirect
+	github.com/urfave/cli/v2 v2.23.7 // indirect
 	github.com/waku-org/go-discover v0.0.0-20221209174356-61c833f34d98 // indirect
 	github.com/waku-org/go-zerokit-rln v0.1.7-wakuorg // indirect
 	github.com/whyrusleeping/timecache v0.0.0-20160911033111-cfcb2f1abfee // indirect
