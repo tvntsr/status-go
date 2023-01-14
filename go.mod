@@ -76,7 +76,7 @@ require github.com/fogleman/gg v1.3.0
 require (
 	github.com/gorilla/sessions v1.2.1
 	github.com/meirf/gopart v0.0.0-20180520194036-37e9492a85a8
-	github.com/waku-org/go-waku v0.3.2-0.20230112230958-d4fec8171c12
+	github.com/waku-org/go-waku v0.3.2-0.20230113235822-b67ec76c2169
 )
 
 require (

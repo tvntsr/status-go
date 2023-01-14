@@ -253,7 +253,7 @@ func New(nodeKey string, fleet string, cfg *Config, logger *zap.Logger, appDB *s
 			return nil, err
 		}
 
-		opts = append(opts, node.WithDiscoveryV5(cfg.UDPPort, bootnodes, cfg.AutoUpdate))
+		opts = append(opts, node.WithDiscoveryV5(uint(cfg.UDPPort), bootnodes, cfg.AutoUpdate))
 
 		// Peer exchange requires DiscV5 to run (might change in future versions of the protocol)
 		if cfg.PeerExchange {
@@ -305,7 +305,6 @@ func New(nodeKey string, fleet string, cfg *Config, logger *zap.Logger, appDB *s
 		if err != nil {
 			return nil, err
 		}
-		go waku.node.DiscV5().Discover(ctx, cfg.DiscoveryLimit)
 	}
 	waku.wg.Add(4)
 
@@ -1308,7 +1307,6 @@ func (w *Waku) StartDiscV5() error {
 		return err
 	}
 
-	w.node.DiscV5().Discover(context.Background(), w.settings.DiscoveryLimit)
 	return nil
 }
 

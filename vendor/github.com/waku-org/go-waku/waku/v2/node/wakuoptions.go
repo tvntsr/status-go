@@ -75,8 +75,9 @@ type WakuNodeParameters struct {
 	swapPaymentThreshold    int
 
 	enableDiscV5     bool
-	udpPort          int
+	udpPort          uint
 	discV5bootnodes  []*enode.Node
+	discV5Opts       []pubsub.DiscoverOpt
 	discV5autoUpdate bool
 
 	enablePeerExchange bool
@@ -281,11 +282,12 @@ func WithWakuRelayAndMinPeers(minRelayPeersToPublish int, opts ...pubsub.Option)
 }
 
 // WithDiscoveryV5 is a WakuOption used to enable DiscV5 peer discovery
-func WithDiscoveryV5(udpPort int, bootnodes []*enode.Node, autoUpdate bool) WakuNodeOption {
+func WithDiscoveryV5(udpPort uint, bootnodes []*enode.Node, autoUpdate bool, discoverOpts ...pubsub.DiscoverOpt) WakuNodeOption {
 	return func(params *WakuNodeParameters) error {
 		params.enableDiscV5 = true
 		params.udpPort = udpPort
 		params.discV5bootnodes = bootnodes
+		params.discV5Opts = discoverOpts
 		params.discV5autoUpdate = autoUpdate
 		return nil
 	}
