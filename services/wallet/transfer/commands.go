@@ -178,7 +178,7 @@ type controlCommand struct {
 	transactionManager *TransactionManager
 }
 
-func (c *controlCommand) LoadTransfers(ctx context.Context, downloader *ETHDownloader, limit int) (map[common.Address][]Transfer, error) {
+func (c *controlCommand) LoadTransfers(ctx context.Context, limit int) (map[common.Address][]Transfer, error) {
 	return loadTransfers(ctx, c.accounts, c.block, c.db, c.chainClient, limit, make(map[common.Address][]*big.Int), c.transactionManager)
 }
 
@@ -264,14 +264,7 @@ func (c *controlCommand) Run(parent context.Context) error {
 		return cmnd.error
 	}
 
-	downloader := &ETHDownloader{
-		chainClient: c.chainClient,
-		accounts:    c.accounts,
-		signer:      types.NewLondonSigner(c.chainClient.ToBigInt()),
-		db:          c.db,
-	}
-
-	_, err = c.LoadTransfers(parent, downloader, 40)
+	_, err = c.LoadTransfers(parent, 40)
 	if err != nil {
 		if c.NewError(err) {
 			return nil
@@ -419,18 +412,12 @@ func (c *loadTransfersCommand) Command() async.Command {
 	}.Run
 }
 
-func (c *loadTransfersCommand) LoadTransfers(ctx context.Context, downloader *ETHDownloader, limit int, blocksByAddress map[common.Address][]*big.Int, transactionManager *TransactionManager) (map[common.Address][]Transfer, error) {
+func (c *loadTransfersCommand) LoadTransfers(ctx context.Context, limit int, blocksByAddress map[common.Address][]*big.Int, transactionManager *TransactionManager) (map[common.Address][]Transfer, error) {
 	return loadTransfers(ctx, c.accounts, c.block, c.db, c.chainClient, limit, blocksByAddress, c.transactionManager)
 }
 
 func (c *loadTransfersCommand) Run(parent context.Context) (err error) {
-	downloader := &ETHDownloader{
-		chainClient: c.chainClient,
-		accounts:    c.accounts,
-		signer:      types.NewLondonSigner(c.chainClient.ToBigInt()),
-		db:          c.db,
-	}
-	transfersByAddress, err := c.LoadTransfers(parent, downloader, 40, c.blocksByAddress, c.transactionManager)
+	transfersByAddress, err := c.LoadTransfers(parent, 40, c.blocksByAddress, c.transactionManager)
 	if err != nil {
 		return err
 	}
