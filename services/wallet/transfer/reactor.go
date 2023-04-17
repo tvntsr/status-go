@@ -28,23 +28,32 @@ type BalanceReader interface {
 	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
 }
 
-// Reactor listens to new blocks and stores transfers into the database.
-type Reactor struct {
+type HistoryFetcher interface {
+	start() error
+	stop()
+
+	setChainClients(chainClients map[uint64]*chain.ClientWithFallback)
+	setAccounts(accounts []common.Address)
+}
+
+type DefaultFetchStrategy struct {
 	db                 *Database
-	block              *Block
+	blockDAO           *BlockDAO
 	feed               *event.Feed
 	mu                 sync.Mutex
 	group              *async.Group
 	transactionManager *TransactionManager
+	chainClients       map[uint64]*chain.ClientWithFallback
+	accounts           []common.Address
 }
 
-func (r *Reactor) newControlCommand(chainClient *chain.ClientWithFallback, accounts []common.Address) *controlCommand {
+func (r *DefaultFetchStrategy) newControlCommand(chainClient *chain.ClientWithFallback, accounts []common.Address) *controlCommand {
 	signer := types.NewLondonSigner(chainClient.ToBigInt())
 	ctl := &controlCommand{
 		db:          r.db,
 		chainClient: chainClient,
 		accounts:    accounts,
-		block:       r.block,
+		blockDAO:    r.blockDAO,
 		eth: &ETHDownloader{
 			chainClient: chainClient,
 			accounts:    accounts,
@@ -60,32 +69,135 @@ func (r *Reactor) newControlCommand(chainClient *chain.ClientWithFallback, accou
 	return ctl
 }
 
-// Start runs reactor loop in background.
-func (r *Reactor) start(chainClients map[uint64]*chain.ClientWithFallback, accounts []common.Address) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (s *DefaultFetchStrategy) start() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if r.group != nil {
+	if s.group != nil {
 		return errAlreadyRunning
 	}
-	r.group = async.NewGroup(context.Background())
-	for _, chainClient := range chainClients {
-		ctl := r.newControlCommand(chainClient, accounts)
-		r.group.Add(ctl.Command())
+	s.group = async.NewGroup(context.Background())
+
+	for _, chainClient := range s.chainClients {
+		ctl := s.newControlCommand(chainClient, s.accounts)
+		s.group.Add(ctl.Command())
 	}
+
 	return nil
 }
 
 // Stop stops reactor loop and waits till it exits.
-func (r *Reactor) stop() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.group == nil {
+func (s *DefaultFetchStrategy) stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.group == nil {
 		return
 	}
-	r.group.Stop()
-	r.group.Wait()
-	r.group = nil
+	s.group.Stop()
+	s.group.Wait()
+	s.group = nil
+}
+
+func (s *DefaultFetchStrategy) setChainClients(chainClients map[uint64]*chain.ClientWithFallback) {
+	s.chainClients = chainClients
+}
+
+func (s *DefaultFetchStrategy) setAccounts(accounts []common.Address) {
+	s.accounts = accounts
+}
+
+type SequentialFetchStrategy struct {
+	db                 *Database
+	blockDAO           *BlockRangeSequentialDAO
+	feed               *event.Feed
+	mu                 sync.Mutex
+	group              *async.Group
+	transactionManager *TransactionManager
+	chainClients       map[uint64]*chain.ClientWithFallback
+	accounts           []common.Address
+}
+
+func (r *SequentialFetchStrategy) newCommand(chainClient *chain.ClientWithFallback, accounts []common.Address) *loadAllTransfersCommand {
+	signer := types.NewLondonSigner(chainClient.ToBigInt())
+	ctl := &loadAllTransfersCommand{
+		db:          r.db,
+		chainClient: chainClient,
+		accounts:    accounts,
+		blockDAO:    r.blockDAO,
+		eth: &ETHDownloader{
+			chainClient: chainClient,
+			accounts:    accounts,
+			signer:      signer,
+			db:          r.db,
+		},
+		erc20:              NewERC20TransfersDownloader(chainClient, accounts, signer),
+		feed:               r.feed,
+		errorsCount:        0,
+		transactionManager: r.transactionManager,
+	}
+	return ctl
+}
+
+func (s *SequentialFetchStrategy) start() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.group != nil {
+		return errAlreadyRunning
+	}
+	s.group = async.NewGroup(context.Background())
+
+	// Run the command on interval (5 seconds)
+	for _, chainClient := range s.chainClients {
+		ctl := s.newCommand(chainClient, s.accounts)
+		s.group.Add(ctl.Command())
+	}
+
+	return nil
+}
+
+// Stop stops reactor loop and waits till it exits.
+func (s *SequentialFetchStrategy) stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.group == nil {
+		return
+	}
+	s.group.Stop()
+	s.group.Wait()
+	s.group = nil
+}
+
+func (s *SequentialFetchStrategy) setChainClients(chainClients map[uint64]*chain.ClientWithFallback) {
+	s.chainClients = chainClients
+}
+
+func (s *SequentialFetchStrategy) setAccounts(accounts []common.Address) {
+	s.accounts = accounts
+}
+
+// Reactor listens to new blocks and stores transfers into the database.
+type Reactor struct {
+	strategy HistoryFetcher
+}
+
+// func newReactor(strategy HistoryFetcher, chainClients map[uint64]*chain.ClientWithFallback, accounts []common.Address) *Reactor {
+func newReactor(strategy HistoryFetcher) *Reactor {
+	return &Reactor{
+		strategy: strategy,
+	}
+}
+
+// Start runs reactor loop in background.
+func (r *Reactor) start(chainClients map[uint64]*chain.ClientWithFallback, accounts []common.Address) error {
+	r.strategy.setChainClients(chainClients)
+	r.strategy.setAccounts(accounts)
+	return r.strategy.start()
+}
+
+// Stop stops reactor loop and waits till it exits.
+func (r *Reactor) stop() {
+	r.strategy.stop()
 }
 
 func (r *Reactor) restart(chainClients map[uint64]*chain.ClientWithFallback, accounts []common.Address) error {

@@ -83,7 +83,7 @@ func (db *Database) Close() error {
 	return db.client.Close()
 }
 
-func (db *Database) ProcessBlocks(chainID uint64, account common.Address, from *big.Int, to *LastKnownBlock, headers []*DBHeader) (err error) {
+func (db *Database) ProcessBlocks(chainID uint64, account common.Address, from *big.Int, to *Block, headers []*DBHeader) (err error) {
 	var (
 		tx *sql.Tx
 	)
@@ -113,29 +113,29 @@ func (db *Database) ProcessBlocks(chainID uint64, account common.Address, from *
 	return
 }
 
-func (db *Database) SaveBlocks(chainID uint64, account common.Address, headers []*DBHeader) (err error) {
-	var (
-		tx *sql.Tx
-	)
-	tx, err = db.client.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err == nil {
-			err = tx.Commit()
-			return
-		}
-		_ = tx.Rollback()
-	}()
+// func (db *Database) SaveBlocks(chainID uint64, account common.Address, headers []*DBHeader) (err error) {
+// 	var (
+// 		tx *sql.Tx
+// 	)
+// 	tx, err = db.client.Begin()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer func() {
+// 		if err == nil {
+// 			err = tx.Commit()
+// 			return
+// 		}
+// 		_ = tx.Rollback()
+// 	}()
 
-	err = insertBlocksWithTransactions(chainID, tx, account, headers)
-	if err != nil {
-		return
-	}
+// 	err = insertBlocksWithTransactions(chainID, tx, account, headers)
+// 	if err != nil {
+// 		return
+// 	}
 
-	return
-}
+// 	return
+// }
 
 // ProcessTransfers atomically adds/removes blocks and adds new transfers.
 func (db *Database) ProcessTransfers(chainID uint64, transfers []Transfer, removed []*DBHeader) (err error) {
@@ -279,8 +279,8 @@ func (db *Database) GetTransactionsLog(chainID uint64, address common.Address, t
 	return nil, err
 }
 
-// SaveHeaders stores a list of headers atomically.
-func (db *Database) SaveHeaders(chainID uint64, headers []*types.Header, address common.Address) (err error) {
+// saveHeaders stores a list of headers atomically.
+func (db *Database) saveHeaders(chainID uint64, headers []*types.Header, address common.Address) (err error) {
 	var (
 		tx     *sql.Tx
 		insert *sql.Stmt
@@ -310,8 +310,8 @@ func (db *Database) SaveHeaders(chainID uint64, headers []*types.Header, address
 	return
 }
 
-// GetHeaderByNumber selects header using block number.
-func (db *Database) GetHeaderByNumber(chainID uint64, number *big.Int) (header *DBHeader, err error) {
+// getHeaderByNumber selects header using block number.
+func (db *Database) getHeaderByNumber(chainID uint64, number *big.Int) (header *DBHeader, err error) {
 	header = &DBHeader{Hash: common.Hash{}, Number: new(big.Int)}
 	err = db.client.QueryRow("SELECT blk_hash, blk_number FROM blocks WHERE blk_number = ? AND network_id = ?", (*bigint.SQLBigInt)(number), chainID).Scan(&header.Hash, (*bigint.SQLBigInt)(header.Number))
 	if err == nil {

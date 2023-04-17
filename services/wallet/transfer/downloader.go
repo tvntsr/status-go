@@ -75,15 +75,14 @@ var errLogsDownloaderStuck = errors.New("logs downloader stuck")
 // If so it downloads transaction that transfer ethereum from that block.
 func (d *ETHDownloader) GetTransfers(ctx context.Context, header *DBHeader) (rst []Transfer, err error) {
 	// TODO(dshulyak) consider caching balance and reset it on reorg
-	changed := d.accounts
-	if len(changed) == 0 {
+	if len(d.accounts) == 0 {
 		return nil, nil
 	}
 	blk, err := d.chainClient.BlockByHash(ctx, header.Hash)
 	if err != nil {
 		return nil, err
 	}
-	rst, err = d.getTransfersInBlock(ctx, blk, changed)
+	rst, err = d.getTransfersInBlock(ctx, blk, d.accounts)
 	if err != nil {
 		return nil, err
 	}
@@ -148,19 +147,23 @@ func getTransferByHash(ctx context.Context, client *chain.ClientWithFallback, si
 }
 
 func (d *ETHDownloader) getTransfersInBlock(ctx context.Context, blk *types.Block, accounts []common.Address) (rst []Transfer, err error) {
+	log.Debug("getTransfersInBlock start", "block", blk.Number(), "account", accounts[0])
+
+	startTs := time.Now()
+
 	for _, address := range accounts {
-		preloadedTransfers, err := d.db.GetPreloadedTransactions(d.chainClient.ChainID, address, blk.Hash())
-		if err != nil {
-			return nil, err
-		}
-		for _, t := range preloadedTransfers {
-			transfer, err := d.transferFromLog(ctx, *t.Log, address, t.ID)
-			if err != nil {
-				log.Error("can't fetch erc20 transfer from log", "error", err)
-				return nil, err
-			}
-			rst = append(rst, transfer)
-		}
+		// preloadedTransfers, err := d.db.GetPreloadedTransactions(d.chainClient.ChainID, address, blk.Hash())
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// for _, t := range preloadedTransfers {
+		// 	transfer, err := d.transferFromLog(ctx, *t.Log, address, t.ID)
+		// 	if err != nil {
+		// 		log.Error("can't fetch erc20 transfer from log", "error", err)
+		// 		return nil, err
+		// 	}
+		// 	rst = append(rst, transfer)
+		// }
 
 		for _, tx := range blk.Transactions() {
 			if tx.ChainId().Cmp(big.NewInt(0)) != 0 && tx.ChainId().Cmp(d.chainClient.ToBigInt()) != 0 {
@@ -206,7 +209,7 @@ func (d *ETHDownloader) getTransfersInBlock(ctx context.Context, blk *types.Bloc
 			}
 		}
 	}
-	log.Debug("getTransfersInBlock found", "block", blk.Number(), "len", len(rst))
+	log.Debug("getTransfersInBlock found", "block", blk.Number(), "len", len(rst), "took", time.Since(startTs))
 	// TODO(dshulyak) test that balance difference was covered by transactions
 	return rst, nil
 }

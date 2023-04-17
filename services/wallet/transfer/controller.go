@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -13,26 +14,25 @@ import (
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/rpc/chain"
 	"github.com/status-im/status-go/services/wallet/async"
-	"github.com/status-im/status-go/services/wallet/walletevent"
 )
 
 type Controller struct {
-	db                 *Database
-	rpcClient          *rpc.Client
-	block              *Block
-	reactor            *Reactor
-	accountFeed        *event.Feed
-	TransferFeed       *event.Feed
-	group              *async.Group
-	balanceCache       *balanceCache
+	db           *Database
+	rpcClient    *rpc.Client
+	blockDAO     *BlockDAO
+	reactor      *Reactor
+	accountFeed  *event.Feed
+	TransferFeed *event.Feed
+	group        *async.Group
+	// balanceCache       *balanceCache
 	transactionManager *TransactionManager
 }
 
 func NewTransferController(db *sql.DB, rpcClient *rpc.Client, accountFeed *event.Feed, transferFeed *event.Feed, transactionManager *TransactionManager) *Controller {
-	block := &Block{db}
+	blockDAO := &BlockDAO{db}
 	return &Controller{
 		db:                 NewDB(db),
-		block:              block,
+		blockDAO:           blockDAO,
 		rpcClient:          rpcClient,
 		accountFeed:        accountFeed,
 		TransferFeed:       transferFeed,
@@ -62,8 +62,16 @@ func (c *Controller) SetInitialBlocksRange(chainIDs []uint64) error {
 		return err
 	}
 
-	for _, chainClient := range chainClients {
-		err := c.block.setInitialBlocksRange(chainClient)
+	for chainID, chainClient := range chainClients {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		header, err := chainClient.HeaderByNumber(ctx, nil)
+		if err != nil {
+			return err
+		}
+
+		err = c.blockDAO.setInitialBlocksRange(chainID, header.Number)
 		if err != nil {
 			return err
 		}
@@ -83,7 +91,7 @@ func (c *Controller) CheckRecentHistory(chainIDs []uint64, accounts []common.Add
 		return nil
 	}
 
-	err := c.block.mergeBlocksRanges(chainIDs, accounts)
+	err := c.blockDAO.mergeBlocksRanges(chainIDs, accounts)
 	if err != nil {
 		return err
 	}
@@ -100,12 +108,22 @@ func (c *Controller) CheckRecentHistory(chainIDs []uint64, accounts []common.Add
 		}
 	}
 
-	c.reactor = &Reactor{
+	// Use different strategies based on controller's strategy arguments
+	// strategy := &DefaultFetchStrategy{
+	// 	db:                 c.db,
+	// 	feed:               c.TransferFeed,
+	// 	blockDAO:           c.blockDAO,
+	// 	transactionManager: c.transactionManager,
+	// }
+
+	strategy := &SequentialFetchStrategy{
 		db:                 c.db,
 		feed:               c.TransferFeed,
-		block:              c.block,
+		blockDAO:           &BlockRangeSequentialDAO{c.db.client},
 		transactionManager: c.transactionManager,
 	}
+	c.reactor = newReactor(strategy)
+
 	err = c.reactor.start(chainClients, accounts)
 	if err != nil {
 		return err
@@ -196,7 +214,7 @@ func (c *Controller) LoadTransferByHash(ctx context.Context, rpcClient *rpc.Clie
 }
 
 func (c *Controller) GetTransfersByAddress(ctx context.Context, chainID uint64, address common.Address, toBlock *big.Int, limit int64, fetchMore bool) ([]View, error) {
-	log.Debug("[WalletAPI:: GetTransfersByAddress] get transfers for an address", "address", address)
+	log.Debug("[WalletAPI:: GetTransfersByAddress] get transfers for an address", "address", address, "fetchMore", fetchMore, "chainID", chainID)
 
 	rst, err := c.db.GetTransfersByAddress(chainID, address, toBlock, limit)
 	if err != nil {
@@ -204,89 +222,94 @@ func (c *Controller) GetTransfersByAddress(ctx context.Context, chainID uint64, 
 		return nil, err
 	}
 
-	transfersCount := int64(len(rst))
-	chainClient, err := c.rpcClient.EthClient(chainID)
-	if err != nil {
-		return nil, err
-	}
+	// transfersCount := int64(len(rst))
+	// log.Debug("[WalletAPI:: GetTransfersByAddress] Proceeding", "transferCount", transfersCount, "limit", limit)
+	// chainClient, err := c.rpcClient.EthClient(chainID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if fetchMore && limit > transfersCount {
-		block, err := c.block.GetFirstKnownBlock(chainID, address)
-		if err != nil {
-			return nil, err
-		}
+	// if fetchMore && limit > transfersCount {
 
-		// if zero block was already checked there is nothing to find more
-		if block == nil || big.NewInt(0).Cmp(block) == 0 {
-			return castToTransferViews(rst), nil
-		}
+	// 	block, err := c.block.GetFirstKnownBlock(chainID, address)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		from, err := findFirstRange(ctx, address, block, chainClient)
-		if err != nil {
-			if nonArchivalNodeError(err) {
-				c.TransferFeed.Send(walletevent.Event{
-					Type: EventNonArchivalNodeDetected,
-				})
-				from = big.NewInt(0).Sub(block, big.NewInt(100))
-			} else {
-				log.Error("first range error", "error", err)
-				return nil, err
-			}
-		}
-		fromByAddress := map[common.Address]*LastKnownBlock{address: {
-			Number: from,
-		}}
-		toByAddress := map[common.Address]*big.Int{address: block}
+	// 	// if zero block was already checked there is nothing to find more
+	// 	if block == nil || big.NewInt(0).Cmp(block) == 0 {
+	// 		log.Debug("[WalletAPI:: GetTransfersByAddress] ZERO block is found for", "address", address, "chaindID", chainID)
+	// 		return castToTransferViews(rst), nil
+	// 	}
 
-		if c.balanceCache == nil {
-			c.balanceCache = newBalanceCache()
-		}
-		blocksCommand := &findAndCheckBlockRangeCommand{
-			accounts:      []common.Address{address},
-			db:            c.db,
-			chainClient:   chainClient,
-			balanceCache:  c.balanceCache,
-			feed:          c.TransferFeed,
-			fromByAddress: fromByAddress,
-			toByAddress:   toByAddress,
-		}
+	// 	from, err := findFirstRange(ctx, address, block, chainClient)
+	// 	log.Debug("[WalletAPI:: GetTransfersByAddress] after findFirstRange")
+	// 	if err != nil {
+	// 		if nonArchivalNodeError(err) {
+	// 			c.TransferFeed.Send(walletevent.Event{
+	// 				Type: EventNonArchivalNodeDetected,
+	// 			})
+	// 			from = big.NewInt(0).Sub(block, big.NewInt(100))
+	// 		} else {
+	// 			log.Error("first range error", "error", err)
+	// 			return nil, err
+	// 		}
+	// 	}
+	// 	fromByAddress := map[common.Address]*LastKnownBlock{address: {
+	// 		Number: from,
+	// 	}}
+	// 	toByAddress := map[common.Address]*big.Int{address: block}
 
-		if err = blocksCommand.Command()(ctx); err != nil {
-			return nil, err
-		}
+	// 	if c.balanceCache == nil {
+	// 		c.balanceCache = newBalanceCache()
+	// 	}
+	// 	blocksCommand := &findAndCheckBlockRangeCommand{
+	// 		accounts:      []common.Address{address},
+	// 		db:            c.db,
+	// 		chainClient:   chainClient,
+	// 		balanceCache:  c.balanceCache,
+	// 		feed:          c.TransferFeed,
+	// 		fromByAddress: fromByAddress,
+	// 		toByAddress:   toByAddress,
+	// 	}
 
-		blocks, err := c.block.GetBlocksByAddress(chainID, address, numberOfBlocksCheckedPerIteration)
-		if err != nil {
-			return nil, err
-		}
+	// 	if err = blocksCommand.Command()(ctx); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	log.Debug("[WalletAPI:: GetTransfersByAddress] after blockCommand")
 
-		log.Info("checking blocks again", "blocks", len(blocks))
-		if len(blocks) > 0 {
-			txCommand := &loadTransfersCommand{
-				accounts:           []common.Address{address},
-				db:                 c.db,
-				block:              c.block,
-				chainClient:        chainClient,
-				transactionManager: c.transactionManager,
-			}
+	// 	blocks, err := c.block.GetBlocksByAddress(chainID, address, numberOfBlocksCheckedPerIteration)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-			err = txCommand.Command()(ctx)
-			if err != nil {
-				return nil, err
-			}
+	// 	log.Info("checking blocks again", "blocks", len(blocks))
+	// 	if len(blocks) > 0 {
+	// 		txCommand := &loadTransfersCommand{
+	// 			accounts:           []common.Address{address},
+	// 			db:                 c.db,
+	// 			block:              c.block,
+	// 			chainClient:        chainClient,
+	// 			transactionManager: c.transactionManager,
+	// 		}
 
-			rst, err = c.db.GetTransfersByAddress(chainID, address, toBlock, limit)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
+	// 		err = txCommand.Command()(ctx)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+
+	// 		rst, err = c.db.GetTransfersByAddress(chainID, address, toBlock, limit)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 	}
+	// }
 
 	return castToTransferViews(rst), nil
 }
 
-func (c *Controller) GetCachedBalances(ctx context.Context, chainID uint64, addresses []common.Address) ([]LastKnownBlockView, error) {
-	result, error := c.block.getLastKnownBalances(chainID, addresses)
+func (c *Controller) GetCachedBalances(ctx context.Context, chainID uint64, addresses []common.Address) ([]BlockView, error) {
+	result, error := c.blockDAO.getLastKnownBlocks(chainID, addresses)
 	if error != nil {
 		return nil, error
 	}

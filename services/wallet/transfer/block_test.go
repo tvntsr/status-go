@@ -13,12 +13,12 @@ import (
 	"github.com/status-im/status-go/sqlite"
 )
 
-func setupTestTransferDB(t *testing.T) (*Block, func()) {
+func setupTestTransferDB(t *testing.T) (*BlockDAO, func()) {
 	tmpfile, err := ioutil.TempFile("", "wallet-transfer-tests-")
 	require.NoError(t, err)
 	db, err := appdatabase.InitializeDB(tmpfile.Name(), "wallet-tests", sqlite.ReducedKDFIterationsNumber)
 	require.NoError(t, err)
-	return &Block{db}, func() {
+	return &BlockDAO{db}, func() {
 		require.NoError(t, db.Close())
 		require.NoError(t, os.Remove(tmpfile.Name()))
 	}

@@ -86,7 +86,8 @@ type Downloader interface {
 	GetTransfersByNumber(context.Context, *big.Int) ([]Transfer, error)
 }
 
-func checkRanges(parent context.Context, client BalanceReader, cache BalanceCache, downloader Downloader, account common.Address, ranges [][]*big.Int) ([][]*big.Int, []*DBHeader, error) {
+func checkRanges(parent context.Context, client BalanceReader, cache BalanceCache, downloader Downloader,
+	account common.Address, ranges [][]*big.Int) ([][]*big.Int, []*DBHeader, error) {
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 
@@ -165,6 +166,43 @@ func checkRanges(parent context.Context, client BalanceReader, cache BalanceCach
 	}
 
 	return c.GetRanges(), c.GetHeaders(), nil
+}
+
+func findBlocksWithEthTransfers2(parent context.Context, client BalanceReader, cache BalanceCache, downloader Downloader,
+	account common.Address, low, high *big.Int, noLimit bool) (from *big.Int, headers []*DBHeader, err error) {
+
+	ranges := [][]*big.Int{{low, high}}
+	minBlock := big.NewInt(low.Int64())
+	headers = []*DBHeader{}
+	var lvl = 1
+	for len(ranges) > 0 && lvl <= 30 {
+		log.Debug("check blocks ranges", "lvl", lvl, "ranges len", len(ranges))
+		lvl++
+		// Check if there are transfers in blocks in ranges. To do that, nonce and balance is checked
+		// the block ranges that have transfers are returned
+		newRanges, newHeaders, err := checkRanges(parent, client, cache, downloader, account, ranges)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		headers = append(headers, newHeaders...)
+
+		if len(newRanges) > 0 {
+			log.Debug("found new ranges", "account", account, "lvl", lvl, "new ranges len", len(newRanges))
+		}
+		if len(newRanges) > 60 && !noLimit {
+			sort.SliceStable(newRanges, func(i, j int) bool {
+				return newRanges[i][0].Cmp(newRanges[j][0]) == 1
+			})
+
+			newRanges = newRanges[:60]
+			minBlock = newRanges[len(newRanges)-1][0]
+		}
+
+		ranges = newRanges
+	}
+
+	return minBlock, headers, err
 }
 
 func findBlocksWithEthTransfers(parent context.Context, client BalanceReader, cache BalanceCache, downloader Downloader, account common.Address, low, high *big.Int, noLimit bool) (from *big.Int, headers []*DBHeader, err error) {
