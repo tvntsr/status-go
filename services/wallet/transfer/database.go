@@ -194,6 +194,29 @@ func (db *Database) SaveTransfers(chainID uint64, address common.Address, transf
 	return
 }
 
+// SaveTransfers
+func (db *Database) SaveTransfersOnly(chainID uint64, address common.Address, transfers []Transfer) (err error) {
+	var tx *sql.Tx
+	tx, err = db.client.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == nil {
+			err = tx.Commit()
+			return
+		}
+		_ = tx.Rollback()
+	}()
+
+	err = updateOrInsertTransfers(chainID, tx, transfers)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 // GetTransfersInRange loads transfers for a given address between two blocks.
 func (db *Database) GetTransfersInRange(chainID uint64, address common.Address, start, end *big.Int) (rst []Transfer, err error) {
 	query := newTransfersQuery().FilterNetwork(chainID).FilterAddress(address).FilterStart(start).FilterEnd(end).FilterLoaded(1)
@@ -477,4 +500,30 @@ func markBlocksAsLoaded(chainID uint64, creator statementCreator, address common
 		}
 	}
 	return nil
+}
+
+func markBlockHeadersAsLoaded(chainID uint64, db *Database, address common.Address, headers []*DBHeader) error {
+	blocks := make([]*big.Int, len(headers))
+
+	for i, header := range headers {
+		blocks[i] = header.Number
+	}
+
+	var (
+		tx *sql.Tx
+	)
+
+	tx, err := db.client.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == nil {
+			err = tx.Commit()
+			return
+		}
+		_ = tx.Rollback()
+	}()
+
+	return markBlocksAsLoaded(chainID, tx, address, blocks)
 }
