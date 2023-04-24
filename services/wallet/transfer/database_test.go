@@ -1,9 +1,7 @@
 package transfer
 
 import (
-	"io/ioutil"
 	"math/big"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,13 +14,14 @@ import (
 )
 
 func setupTestDB(t *testing.T) (*Database, *BlockDAO, func()) {
-	tmpfile, err := ioutil.TempFile("", "wallet-tests-")
-	require.NoError(t, err)
-	db, err := appdatabase.InitializeDB(tmpfile.Name(), "wallet-tests", sqlite.ReducedKDFIterationsNumber)
+	// tmpfile, err := ioutil.TempFile("", "wallet-tests-")
+	// require.NoError(t, err)
+	// db, err := appdatabase.InitializeDB(tmpfile.Name(), "wallet-tests", sqlite.ReducedKDFIterationsNumber)
+	db, err := appdatabase.InitializeDB(sqlite.InMemoryPath, "wallet-tests", sqlite.ReducedKDFIterationsNumber)
 	require.NoError(t, err)
 	return NewDB(db), &BlockDAO{db}, func() {
 		require.NoError(t, db.Close())
-		require.NoError(t, os.Remove(tmpfile.Name()))
+		// require.NoError(t, os.Remove(tmpfile.Name()))
 	}
 }
 

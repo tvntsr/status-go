@@ -152,18 +152,18 @@ func (d *ETHDownloader) getTransfersInBlock(ctx context.Context, blk *types.Bloc
 	startTs := time.Now()
 
 	for _, address := range accounts {
-		// preloadedTransfers, err := d.db.GetPreloadedTransactions(d.chainClient.ChainID, address, blk.Hash())
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// for _, t := range preloadedTransfers {
-		// 	transfer, err := d.transferFromLog(ctx, *t.Log, address, t.ID)
-		// 	if err != nil {
-		// 		log.Error("can't fetch erc20 transfer from log", "error", err)
-		// 		return nil, err
-		// 	}
-		// 	rst = append(rst, transfer)
-		// }
+		preloadedTransfers, err := d.db.GetPreloadedTransactions(d.chainClient.ChainID, address, blk.Hash())
+		if err != nil {
+			return nil, err
+		}
+		for _, t := range preloadedTransfers {
+			transfer, err := d.transferFromLog(ctx, *t.Log, address, t.ID)
+			if err != nil {
+				log.Error("can't fetch erc20 transfer from log", "error", err)
+				return nil, err
+			}
+			rst = append(rst, transfer)
+		}
 
 		for _, tx := range blk.Transactions() {
 			if tx.ChainId().Cmp(big.NewInt(0)) != 0 && tx.ChainId().Cmp(d.chainClient.ToBigInt()) != 0 {

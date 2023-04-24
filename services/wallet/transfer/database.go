@@ -196,6 +196,7 @@ func (db *Database) SaveTransfers(chainID uint64, address common.Address, transf
 
 // SaveTransfers
 func (db *Database) SaveTransfersOnly(chainID uint64, address common.Address, transfers []Transfer) (err error) {
+	// log.Info("SaveTransfersOnly", "address", address, "transfers", len(transfers))
 	var tx *sql.Tx
 	tx, err = db.client.Begin()
 	if err != nil {

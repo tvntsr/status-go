@@ -50,8 +50,8 @@ func (c *ethHistoricalSingleAccCommand) Run(ctx context.Context) (err error) {
 
 	if err != nil {
 		c.error = err
-		return nil
-		// return err
+		// return nil
+		return err
 	}
 
 	c.foundHeaders = headers
@@ -672,7 +672,7 @@ func (c *findBlocksCommand) Run(parent context.Context) (err error) {
 
 	// Continue from last block
 	if c.resFromBlock != nil {
-		fromBlock = c.resFromBlock
+		c.toBlockNumber = c.resFromBlock.Number
 	}
 
 	newFromBlock, ethHeaders, stopBlock, err := c.fastIndex(parent, c.balanceCache, fromBlock, c.toBlockNumber)
@@ -688,6 +688,7 @@ func (c *findBlocksCommand) Run(parent context.Context) (err error) {
 	erc20Headers, err := c.fastIndexErc20(parent, newFromBlock.Number, c.toBlockNumber)
 	// erc20Headers, err := []*DBHeader{}, nil
 	if err != nil {
+		c.error = err
 		return err
 	}
 

@@ -532,11 +532,13 @@ func (c *transfersCommand2) Command() async.Command {
 }
 
 func (c *transfersCommand2) Run(ctx context.Context) (err error) {
+	log.Info("transfersCommands2 start", "address", c.address, "blockNum", c.blockNum)
+
 	startTs := time.Now()
 
 	allTransfers, err := c.eth.GetTransfersByNumber(ctx, c.blockNum)
 	if err != nil {
-		log.Info("GetTransfersByNumber error", "error", err)
+		log.Warn("GetTransfersByNumber error", "error", err)
 		return err
 	}
 
@@ -573,15 +575,16 @@ func (c *transfersCommand2) Run(ctx context.Context) (err error) {
 
 		err = markBlockHeadersAsLoaded(c.chainClient.ChainID, c.db, c.address, []*DBHeader{{Number: c.blockNum}})
 		if err != nil {
+			log.Error("markHeadersAsLoaded error", "error", err)
 			return
 		}
 
-		return
+		// return
 	}
 
 	c.fetchedTransfers = allTransfers
-	log.Debug("transfers loaded", "address", c.address, "len", len(allTransfers), "in", time.Since(startTs))
-	log.Debug("transfers loaded", "in", time.Since(startTs))
+	log.Info("transfers loaded", "address", c.address, "len", len(allTransfers), "in", time.Since(startTs))
+	// log.Info("transfers loaded", "in", time.Since(startTs))
 	return nil
 }
 
@@ -943,7 +946,7 @@ func loadTransfers2(ctx context.Context, account common.Address, blockDAO *Block
 	chainClient *chain.ClientWithFallback, headers []*DBHeader,
 	transactionManager *TransactionManager) ([]Transfer, error) {
 
-	log.Info("loadTransfers2 start", "account", account)
+	log.Info("loadTransfers2 start", "account", account, "headers len", len(headers))
 	start := time.Now()
 	group := async.NewGroup(ctx)
 

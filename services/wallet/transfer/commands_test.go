@@ -528,6 +528,7 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 	defer stop()
 
 	INFURA_TOKEN := "c4bf68a9de2d49bbb04447a73ffd3e0b"
+
 	URL := "https://mainnet.infura.io/v3/" + INFURA_TOKEN
 	gethRPCClient, err := gethrpc.Dial(URL)
 	require.NoError(t, err)
@@ -535,7 +536,8 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 	var chainID uint64 = 1
 	chainClient := chain.NewClient(gethRPCClient, nil, chainID)
 	// account := common.HexToAddress("0xE4eDb277e41dc89aB076a1F049f4a3EfA700bCE8") // Binance? too many TX
-	account := common.HexToAddress("0xb299BC4c6054a12b331ab8d9a30c874d59Ae47Db")
+	// account := common.HexToAddress("0xb299BC4c6054a12b331ab8d9a30c874d59Ae47Db") // 3 transactions
+	account := common.HexToAddress("0xEe5F5c53CE2159fC6DD4b0571E86a4A390D04846") // ~3500 txs
 
 	txManager, tdbClose := setupTestTransactionDB(t)
 	defer tdbClose()
@@ -599,6 +601,7 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 			rangeSize := big.NewInt(100000)
 			fromBlockNumber := big.NewInt(0).Sub(tt.fields.toBlockNumber, rangeSize)
 			toBlockNumber := tt.fields.toBlockNumber
+			allTransfers := []Transfer{}
 			for {
 				c := &findBlocksCommand{
 					account:       tt.fields.account,
@@ -626,9 +629,10 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 						t.Log("header", "Number", header.Number, "hash", header.Hash, "ts", header.Timestamp)
 					}
 					transfers, _ := loadTransfers2(tt.args.parent, tt.fields.account, nil, tt.fields.db, tt.fields.chainClient, c.foundHeaders, txManager)
-					for _, tx := range transfers {
-						t.Log("transfer", "from", tx.From, "hash", tx.Transaction.Hash())
-					}
+					// for _, tx := range transfers {
+					// 	t.Log("transfer", "from", tx.From, "hash", tx.Transaction.Hash())
+					// }
+					allTransfers = append(allTransfers, transfers...)
 
 					if c.resFromBlock.Number.Cmp(c.fromBlock.Number) == 0 {
 						break
@@ -644,6 +648,7 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 					break
 				}
 			}
+			t.Log("findBlocksCommand total transfers:", len(allTransfers))
 		})
 	}
 }

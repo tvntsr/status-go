@@ -16,13 +16,13 @@ import (
 
 // NewConcurrentDownloader creates ConcurrentDownloader instance.
 func NewConcurrentDownloader(ctx context.Context) *ConcurrentDownloader {
-	runner := async.NewAtomicGroup(ctx)
+	runner := async.NewQueuedAtomicGroup(ctx, 50)
 	result := &Result{}
 	return &ConcurrentDownloader{runner, result}
 }
 
 type ConcurrentDownloader struct {
-	*async.AtomicGroup
+	*async.QueuedAtomicGroup
 	*Result
 }
 
@@ -101,6 +101,8 @@ func checkRanges(parent context.Context, client BalanceReader, cache BalanceCach
 	for _, blocksRange := range ranges {
 		from := blocksRange[0]
 		to := blocksRange[1]
+
+		log.Info("checkRanges loop ranges", "from", from, "to", to)
 
 		c.Add(func(ctx context.Context) error {
 			if from.Cmp(to) >= 0 {
@@ -191,6 +193,8 @@ func checkRanges2(parent context.Context, client BalanceReader, cache BalanceCac
 	for _, blocksRange := range ranges {
 		from := blocksRange[0]
 		to := blocksRange[1]
+
+		log.Debug("checkRanges2 loop ranges", "from", from, "to", to)
 
 		if to.Cmp(newStopBlock) <= 0 {
 			log.Warn("'to' block is less than 'stop' block _", "to", to, "stopBlock", stopBlock)
