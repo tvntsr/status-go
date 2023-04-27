@@ -5,8 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/ethereum/go-ethereum/log"
+	// "github.com/ethereum/go-ethereum/log"
 )
 
 type Command func(context.Context) error
@@ -214,7 +213,7 @@ func (d *QueuedAtomicGroup) Add(cmd Command) {
 	counter := atomic.LoadInt64(&d.count)
 	if d.limit > 0 && counter >= d.limit {
 		d.pendingCmds = append(d.pendingCmds, cmd)
-		log.Info("queueing command", "pending", len(d.pendingCmds))
+		// log.Info("queueing command", "pending", len(d.pendingCmds))
 		return
 	}
 
@@ -224,6 +223,7 @@ func (d *QueuedAtomicGroup) Add(cmd Command) {
 func (d *QueuedAtomicGroup) run(cmd Command) {
 	d.wg.Add(1)
 	atomic.AddInt64(&d.count, int64(1))
+	// log.Info("runnning command", "counter", d.count)
 	go func() {
 		defer d.Done()
 		err := cmd(d.ctx)
@@ -247,12 +247,12 @@ func (d *QueuedAtomicGroup) Done() {
 
 	counter := atomic.LoadInt64(&d.count)
 
-	log.Info("queued command done", "counter", counter, "pending len", len(d.pendingCmds))
+	// log.Info("queued command done", "counter", counter, "pending len", len(d.pendingCmds))
 
 	if counter < d.limit && len(d.pendingCmds) > 0 {
 		cmd := d.pendingCmds[0]
 		d.pendingCmds = d.pendingCmds[1:]
-		log.Info("running queued command", "pending len", len(d.pendingCmds))
+		// log.Info("running queued command", "pending len", len(d.pendingCmds))
 		d.run(cmd)
 	}
 }

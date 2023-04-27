@@ -347,7 +347,7 @@ func (d *ERC20TransfersDownloader) transferFromLog(parent context.Context, ethlo
 }
 
 func (d *ERC20TransfersDownloader) transfersFromLogs(parent context.Context, logs []types.Log, address common.Address) ([]Transfer, error) {
-	concurrent := NewConcurrentDownloader(parent)
+	concurrent := NewConcurrentDownloader(parent, 0)
 	for i := range logs {
 		l := logs[i]
 		if l.Removed {
@@ -371,7 +371,7 @@ func (d *ERC20TransfersDownloader) transfersFromLogs(parent context.Context, log
 }
 
 func (d *ERC20TransfersDownloader) blocksFromLogs(parent context.Context, logs []types.Log, address common.Address) ([]*DBHeader, error) {
-	concurrent := NewConcurrentDownloader(parent)
+	concurrent := NewConcurrentDownloader(parent, 0)
 	for i := range logs {
 		l := logs[i]
 

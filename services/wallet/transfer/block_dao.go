@@ -296,31 +296,31 @@ func (b *BlockDAO) GetLastBlockByAddress(chainID uint64, address common.Address,
 // 	return nil, nil
 // }
 
-// func (b *BlockDAO) GetFirstKnownBlock(chainID uint64, address common.Address) (rst *big.Int, err error) {
-// 	query := `SELECT blk_from FROM blocks_ranges
-// 	WHERE address = ?
-// 	AND network_id = ?
-// 	ORDER BY blk_from
-// 	LIMIT 1`
+func (b *BlockDAO) GetFirstKnownBlock(chainID uint64, address common.Address) (rst *big.Int, err error) {
+	query := `SELECT blk_from FROM blocks_ranges
+	WHERE address = ?
+	AND network_id = ?
+	ORDER BY blk_from
+	LIMIT 1`
 
-// 	rows, err := b.db.Query(query, address, chainID)
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer rows.Close()
+	rows, err := b.db.Query(query, address, chainID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
 
-// 	if rows.Next() {
-// 		block := &big.Int{}
-// 		err = rows.Scan((*bigint.SQLBigInt)(block))
-// 		if err != nil {
-// 			return nil, err
-// 		}
+	if rows.Next() {
+		block := &big.Int{}
+		err = rows.Scan((*bigint.SQLBigInt)(block))
+		if err != nil {
+			return nil, err
+		}
 
-// 		return block, nil
-// 	}
+		return block, nil
+	}
 
-// 	return nil, nil
-// }
+	return nil, nil
+}
 
 func (b *BlockDAO) GetLastKnownBlockByAddress(chainID uint64, address common.Address) (block *Block, err error) {
 	query := `SELECT blk_to, balance, nonce FROM blocks_ranges

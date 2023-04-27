@@ -527,7 +527,8 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 	db, _, stop := setupTestDB(t)
 	defer stop()
 
-	INFURA_TOKEN := "c4bf68a9de2d49bbb04447a73ffd3e0b"
+	// INFURA_TOKEN := "c4bf68a9de2d49bbb04447a73ffd3e0b" // job gmail
+	INFURA_TOKEN := "ccb931f60c774466b82872fd9a4b93dd" // status gmail
 
 	URL := "https://mainnet.infura.io/v3/" + INFURA_TOKEN
 	gethRPCClient, err := gethrpc.Dial(URL)
@@ -537,7 +538,8 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 	chainClient := chain.NewClient(gethRPCClient, nil, chainID)
 	// account := common.HexToAddress("0xE4eDb277e41dc89aB076a1F049f4a3EfA700bCE8") // Binance? too many TX
 	// account := common.HexToAddress("0xb299BC4c6054a12b331ab8d9a30c874d59Ae47Db") // 3 transactions
-	account := common.HexToAddress("0xEe5F5c53CE2159fC6DD4b0571E86a4A390D04846") // ~3500 txs
+	// account := common.HexToAddress("0xEe5F5c53CE2159fC6DD4b0571E86a4A390D04846") // ~3500 txs
+	account := common.HexToAddress("0x79c0aFf8061A34798bf79Fe85538EfbFE0603CE5") // 164 txs at the moment
 
 	txManager, tdbClose := setupTestTransactionDB(t)
 	defer tdbClose()
@@ -580,7 +582,7 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 				// fromBlock: map[common.Address]*big.Int{
 				// 	accounts[0]: big.NewInt(17071951),
 				// },
-				toBlockNumber: big.NewInt(17072951), // some last block number at the moment
+				toBlockNumber: big.NewInt(17121447), // some last block number at the moment
 				noLimit:       false,
 				// resFromBlock   tt.fields.resFromBlock,
 				// stopBlock      tt.fields.stopBlock,
@@ -625,14 +627,15 @@ func Test_findBlocksCommand_Run(t *testing.T) {
 					}
 
 					t.Log("findBlocksCommand.Run() len:", len(c.foundHeaders), "resFromBlock", c.resFromBlock.Number, "fromBlock", c.fromBlock.Number)
-					for _, header := range c.foundHeaders {
-						t.Log("header", "Number", header.Number, "hash", header.Hash, "ts", header.Timestamp)
-					}
+					// for _, header := range c.foundHeaders {
+					// 	t.Log("header", "Number", header.Number, "hash", header.Hash, "ts", header.Timestamp)
+					// }
 					transfers, _ := loadTransfers2(tt.args.parent, tt.fields.account, nil, tt.fields.db, tt.fields.chainClient, c.foundHeaders, txManager)
 					// for _, tx := range transfers {
-					// 	t.Log("transfer", "from", tx.From, "hash", tx.Transaction.Hash())
+					// 	t.Log("transfer", "from", tx.From, "hash", tx.Transaction.Hash(), "ts", tx.Timestamp)
 					// }
 					allTransfers = append(allTransfers, transfers...)
+					t.Log("findBlocksCommand transfer count:", len(allTransfers))
 
 					if c.resFromBlock.Number.Cmp(c.fromBlock.Number) == 0 {
 						break

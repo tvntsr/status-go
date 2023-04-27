@@ -15,14 +15,16 @@ import (
 )
 
 // NewConcurrentDownloader creates ConcurrentDownloader instance.
-func NewConcurrentDownloader(ctx context.Context) *ConcurrentDownloader {
-	runner := async.NewQueuedAtomicGroup(ctx, 50)
+func NewConcurrentDownloader(ctx context.Context, limit int64) *ConcurrentDownloader {
+	runner := async.NewQueuedAtomicGroup(ctx, limit)
+	// runner := async.NewAtomicGroup(ctx)
 	result := &Result{}
 	return &ConcurrentDownloader{runner, result}
 }
 
 type ConcurrentDownloader struct {
 	*async.QueuedAtomicGroup
+	// *async.AtomicGroup
 	*Result
 }
 
@@ -96,7 +98,8 @@ func checkRanges(parent context.Context, client BalanceReader, cache BalanceCach
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 
-	c := NewConcurrentDownloader(ctx)
+	var nolimit int64 = 0
+	c := NewConcurrentDownloader(ctx, nolimit)
 
 	for _, blocksRange := range ranges {
 		from := blocksRange[0]
@@ -181,12 +184,13 @@ func checkRanges(parent context.Context, client BalanceReader, cache BalanceCach
 func checkRanges2(parent context.Context, client BalanceReader, cache BalanceCache, downloader Downloader,
 	account common.Address, ranges [][]*big.Int, stopBlock *big.Int) ([][]*big.Int, []*DBHeader, *big.Int, error) {
 
-	log.Info("checkRanges2 start", "account", account.Hex(), "ranges len", len(ranges))
+	// log.Info("checkRanges2 start", "account", account.Hex(), "ranges len", len(ranges))
 
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 
-	c := NewConcurrentDownloader(ctx)
+	concurrentLimit := int64(10)
+	c := NewConcurrentDownloader(ctx, concurrentLimit)
 
 	newStopBlock := stopBlock
 
@@ -284,7 +288,7 @@ func checkRanges2(parent context.Context, client BalanceReader, cache BalanceCac
 		return nil, nil, stopBlock, errors.Wrap(c.Error(), "failed to dowload transfers using concurrent downloader")
 	}
 
-	log.Info("checkRanges2 end", "account", account.Hex(), "newStopBlock", newStopBlock)
+	// log.Info("checkRanges2 end", "account", account.Hex(), "newStopBlock", newStopBlock)
 
 	return c.GetRanges(), c.GetHeaders(), newStopBlock, nil
 }

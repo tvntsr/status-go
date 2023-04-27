@@ -2,6 +2,7 @@ package transfer
 
 import (
 	"context"
+	"database/sql"
 	"math/big"
 	"sort"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/status-go/rpc/chain"
 	"github.com/status-im/status-go/services/wallet/async"
+	"github.com/status-im/status-go/services/wallet/walletevent"
 )
 
 type ethHistoricalSingleAccCommand struct {
@@ -37,7 +39,7 @@ func (c *ethHistoricalSingleAccCommand) Command() async.Command {
 }
 
 func (c *ethHistoricalSingleAccCommand) Run(ctx context.Context) (err error) {
-	log.Info("eth historical single acc downloader starting", "address", c.address)
+	log.Info("eth historical single acc downloader starting", "address", c.address, "from", c.from.Number, "to", c.to, "noLimit", c.noLimit)
 
 	start := time.Now()
 	if c.from.Number != nil && c.from.Balance != nil {
@@ -50,7 +52,8 @@ func (c *ethHistoricalSingleAccCommand) Run(ctx context.Context) (err error) {
 
 	if err != nil {
 		c.error = err
-		// return nil
+		// return nil // TODO FIND OUT WHY SLOW if return err!!!
+		log.Error("failed to find blocks with transfers", "error", err)
 		return err
 	}
 
@@ -69,579 +72,6 @@ func (c *ethHistoricalSingleAccCommand) Run(ctx context.Context) (err error) {
 	log.Debug("eth transfers were persisted. command is closed")
 	return nil
 }
-
-// type erc20HistoricalCommand struct {
-// 	db          *Database
-// 	erc20       BatchDownloader
-// 	address     common.Address
-// 	chainClient *chain.ClientWithFallback
-// 	feed        *event.Feed
-
-// 	iterator     *IterativeDownloader
-// 	to           *big.Int
-// 	from         *big.Int
-// 	foundHeaders []*DBHeader
-// }
-
-// func (c *erc20HistoricalCommand) Command() async.Command {
-// 	return async.FiniteCommand{
-// 		Interval: 5 * time.Second,
-// 		Runable:  c.Run,
-// 	}.Run
-// }
-
-// func getErc20BatchSize(chainID uint64) *big.Int {
-// 	if isBinanceChain(chainID) {
-// 		return binanceChainErc20BatchSize
-// 	}
-
-// 	if chainID == goerliChainID {
-// 		return goerliErc20BatchSize
-// 	}
-
-// 	if chainID == goerliArbitrumChainID {
-// 		return goerliErc20ArbitrumBatchSize
-// 	}
-
-// 	return erc20BatchSize
-// }
-
-// func (c *erc20HistoricalCommand) Run(ctx context.Context) (err error) {
-// 	start := time.Now()
-// 	if c.iterator == nil {
-// 		c.iterator, err = SetupIterativeDownloader(
-// 			c.db, c.chainClient, c.address,
-// 			c.erc20, getErc20BatchSize(c.chainClient.ChainID), c.to, c.from)
-// 		if err != nil {
-// 			log.Error("failed to setup historical downloader for erc20")
-// 			return err
-// 		}
-// 	}
-// 	for !c.iterator.Finished() {
-// 		headers, _, _, err := c.iterator.Next(ctx)
-// 		if err != nil {
-// 			log.Error("failed to get next batch", "error", err)
-// 			return err
-// 		}
-// 		c.foundHeaders = append(c.foundHeaders, headers...)
-
-// 		/*err = c.db.ProcessBlocks(c.address, from, to, headers, erc20Transfer)
-// 		if err != nil {
-// 			c.iterator.Revert()
-// 			log.Error("failed to save downloaded erc20 blocks with transfers", "error", err)
-// 			return err
-// 		}*/
-// 	}
-// 	log.Info("wallet historical downloader for erc20 transfers finished", "in", time.Since(start))
-// 	return nil
-// }
-
-// // controlCommand implements following procedure (following parts are executed sequeantially):
-// // - verifies that the last header that was synced is still in the canonical chain
-// // - runs fast indexing for each account separately
-// // - starts listening to new blocks and watches for reorgs
-// type controlCommand struct {
-// 	accounts           []common.Address
-// 	db                 *Database
-// 	blockDAO           *BlockDAO
-// 	eth                *ETHDownloader
-// 	erc20              *ERC20TransfersDownloader
-// 	chainClient        *chain.ClientWithFallback
-// 	feed               *event.Feed
-// 	errorsCount        int
-// 	nonArchivalRPCNode bool
-// 	transactionManager *TransactionManager
-// }
-
-// // controlCommand implements following procedure (following parts are executed sequeantially):
-// // - verifies that the last header that was synced is still in the canonical chain
-// // - runs fast indexing for each account separately
-// // - starts listening to new blocks and watches for reorgs
-// type loadAllTransfersCommand struct {
-// 	accounts           []common.Address
-// 	db                 *Database
-// 	blockDAO           *BlockRangeSequentialDAO
-// 	eth                *ETHDownloader
-// 	erc20              *ERC20TransfersDownloader
-// 	chainClient        *chain.ClientWithFallback
-// 	feed               *event.Feed
-// 	errorsCount        int
-// 	nonArchivalRPCNode bool
-// 	transactionManager *TransactionManager
-// }
-
-// func (c *loadAllTransfersCommand) Run(parent context.Context) error {
-// 	log.Info("start load all transfers command")
-// 	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
-// 	head, err := c.chainClient.HeaderByNumber(ctx, nil)
-// 	cancel()
-// 	if err != nil {
-// 		// if c.NewError(err) {
-// 		// 	return nil
-// 		// }
-// 		return err
-// 	}
-
-// 	if c.feed != nil {
-// 		c.feed.Send(walletevent.Event{
-// 			Type:     EventFetchingRecentHistory,
-// 			Accounts: c.accounts,
-// 		})
-// 	}
-
-// 	log.Info("current head is", "block number", head.Number)
-// 	lastKnownEthBlocks, err := c.blockDAO.getLastKnownBlocks(c.chainClient.ChainID, c.accounts)
-// 	if err != nil {
-// 		log.Error("failed to load last head from database", "error", err)
-// 		// if c.NewError(err) {
-// 		// 	return nil
-// 		// }
-// 		return err
-// 	}
-
-// 	firstKnownEthBlocks, err := c.blockDAO.getFirstKnownBlocks(c.chainClient.ChainID, c.accounts)
-// 	if err != nil {
-// 		log.Error("failed to load first block from database", "error", err)
-// 		// if c.NewError(err) {
-// 		// 	return nil
-// 		// }
-// 		return err
-// 	}
-
-// 	// fromMap := map[common.Address]*big.Int{}
-// 	//
-// 	// if !c.nonArchivalRPCNode {
-// 	// 	fromMap, err = findFirstRanges(parent, accountsWithoutHistory, head.Number, c.chainClient)
-// 	// 	if err != nil {
-// 	// 		if c.NewError(err) {
-// 	// 			return nil
-// 	// 		}
-// 	// 		return err
-// 	// 	}
-// 	// }
-
-// 	// target := head.Number
-// 	// fromByAddress := map[common.Address]*Block{}
-// 	// toByAddress := map[common.Address]*big.Int{}
-
-// 	// for _, address := range c.accounts {
-// 	// 	from, _ := lastKnownEthBlocks[address]
-// 	// 	// from, ok := lastKnownEthBlocks[address]
-// 	// 	// TODO get last known block for accounts without history, but only a last block
-// 	// 	// if !ok {
-// 	// 	// 	from = &LastBlock{Number: fromMap[address]}
-// 	// 	// }
-// 	// 	if c.nonArchivalRPCNode {
-// 	// 		from = &Block{Number: big.NewInt(0).Sub(target, big.NewInt(100))} // Last 100 blocks? Why?
-// 	// 	}
-
-// 	// 	fromByAddress[address] = from
-// 	// 	toByAddress[address] = target
-// 	// }
-
-// 	// bCache := newBalanceCache()
-// 	// cmnd := &findBlocksCommand{
-// 	// 	accounts:      c.accounts,
-// 	// 	db:            c.db,
-// 	// 	chainClient:   c.chainClient,
-// 	// 	balanceCache:  bCache,
-// 	// 	feed:          c.feed,
-// 	// 	fromByAddress: fromByAddress,
-// 	// 	toByAddress:   toByAddress,
-// 	// }
-
-// 	// err = cmnd.Command()(parent)
-// 	// if err != nil {
-// 	// 	if c.NewError(err) {
-// 	// 		return nil
-// 	// 	}
-// 	// 	return err
-// 	// }
-
-// 	// if cmnd.error != nil {
-// 	// 	if c.NewError(cmnd.error) {
-// 	// 		return nil
-// 	// 	}
-// 	// 	return cmnd.error
-// 	// }
-
-// 	loadTransfers2(ctx, c.accounts, c.blockDAO, c.db, c.chainClient,
-// 		firstKnownEthBlocks, lastKnownEthBlocks, c.transactionManager)
-// 	// _, err = c.LoadTransfers(parent, 40)
-// 	// if err != nil {
-// 	// 	if c.NewError(err) {
-// 	// 		return nil
-// 	// 	}
-// 	// 	return err
-// 	// }
-
-// 	// if c.feed != nil {
-// 	// 	events := map[common.Address]walletevent.Event{}
-// 	// 	for _, address := range c.accounts {
-// 	// 		event := walletevent.Event{
-// 	// 			Type:     EventNewTransfers,
-// 	// 			Accounts: []common.Address{address},
-// 	// 		}
-// 	// 		for _, header := range cmnd.foundHeaders[address] {
-// 	// 			if event.BlockNumber == nil || header.Number.Cmp(event.BlockNumber) == 1 {
-// 	// 				event.BlockNumber = header.Number
-// 	// 			}
-// 	// 		}
-// 	// 		if event.BlockNumber != nil {
-// 	// 			events[address] = event
-// 	// 		}
-// 	// 	}
-
-// 	// 	for _, event := range events {
-// 	// 		c.feed.Send(event)
-// 	// 	}
-
-// 	// 	c.feed.Send(walletevent.Event{
-// 	// 		Type:        EventRecentHistoryReady,
-// 	// 		Accounts:    c.accounts,
-// 	// 		BlockNumber: target,
-// 	// 	})
-// 	// }
-
-// 	log.Info("end loadAllTransfers command")
-// 	return err
-// }
-
-// // TODO REMOVE IT????
-// func (c *loadAllTransfersCommand) Command() async.Command {
-// 	return async.InfiniteCommand{
-// 		Interval: 5 * time.Second,
-// 		Runable:  c.Run,
-// 	}.Run
-// }
-
-// func (c *controlCommand) LoadTransfers(ctx context.Context, limit int) (map[common.Address][]Transfer, error) {
-// 	return loadTransfers(ctx, c.accounts, c.blockDAO, c.db, c.chainClient, limit, make(map[common.Address][]*big.Int), c.transactionManager)
-// }
-
-// // TODO #10246 Rename controlCommand to something meaningful like loadTransfersCommand
-// func (c *controlCommand) Run(parent context.Context) error {
-// 	log.Info("start control command")
-// 	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
-// 	head, err := c.chainClient.HeaderByNumber(ctx, nil)
-// 	cancel()
-// 	if err != nil {
-// 		if c.NewError(err) {
-// 			return nil
-// 		}
-// 		return err
-// 	}
-
-// 	if c.feed != nil {
-// 		c.feed.Send(walletevent.Event{
-// 			Type:     EventFetchingRecentHistory,
-// 			Accounts: c.accounts,
-// 		})
-// 	}
-
-// 	log.Info("current head is", "block number", head.Number)
-
-// 	// Get last known block for each account
-// 	// lastKnownEthBlocks, accountsWithoutHistory, err := c.blockDAO.GetLastKnownBlockByAddresses(c.chainClient.ChainID, c.accounts)
-// 	lastKnownEthBlocks, _, err := c.blockDAO.GetLastKnownBlockByAddresses(c.chainClient.ChainID, c.accounts)
-// 	if err != nil {
-// 		log.Error("failed to load last head from database", "error", err)
-// 		if c.NewError(err) {
-// 			return nil
-// 		}
-// 		return err
-// 	}
-
-// 	// For accounts without history, find the block where 20 < headNonce - nonce < 25 (blocks have between 20-25 transactions)
-// 	// fromMap := map[common.Address]*big.Int{}
-
-// 	// if !c.nonArchivalRPCNode {
-// 	// 	fromMap, err = findFirstRanges(parent, accountsWithoutHistory, head.Number, c.chainClient)
-// 	// 	if err != nil {
-// 	// 		if c.NewError(err) {
-// 	// 			return nil
-// 	// 		}
-// 	// 		return err
-// 	// 	}
-// 	// }
-
-// 	// Set "fromByAddress" from the information we have
-// 	target := head.Number
-// 	fromByAddress := map[common.Address]*Block{}
-// 	toByAddress := map[common.Address]*big.Int{}
-
-// 	for _, address := range c.accounts {
-// 		from, ok := lastKnownEthBlocks[address]
-// 		if !ok {
-// 			// from = &Block{Number: fromMap[address]}
-// 			from = &Block{Number: big.NewInt(0)}
-// 		}
-// 		// if c.nonArchivalRPCNode {
-// 		// 	from = &Block{Number: big.NewInt(0).Sub(target, big.NewInt(100))}
-// 		// }
-
-// 		fromByAddress[address] = from
-// 		toByAddress[address] = target
-// 	}
-
-// 	log.Info("loading blocks", "from", fromByAddress[c.accounts[0]].Number, "to", toByAddress[c.accounts[0]])
-
-// 	bCache := newBalanceCache()
-// 	cmnd := &findBlocksCommand{
-// 		accounts:      c.accounts,
-// 		db:            c.db,
-// 		chainClient:   c.chainClient,
-// 		balanceCache:  bCache,
-// 		feed:          c.feed,
-// 		fromByAddress: fromByAddress,
-// 		toByAddress:   toByAddress,
-// 	}
-
-// 	err = cmnd.Command()(parent)
-// 	if err != nil {
-// 		if c.NewError(err) {
-// 			return nil
-// 		}
-// 		return err
-// 	}
-
-// 	if cmnd.error != nil {
-// 		if c.NewError(cmnd.error) {
-// 			return nil
-// 		}
-// 		return cmnd.error
-// 	}
-
-// 	_, err = c.LoadTransfers(parent, 40)
-// 	if err != nil {
-// 		if c.NewError(err) {
-// 			return nil
-// 		}
-// 		return err
-// 	}
-
-// 	if c.feed != nil {
-// 		events := map[common.Address]walletevent.Event{}
-// 		for _, address := range c.accounts {
-// 			event := walletevent.Event{
-// 				Type:     EventNewTransfers,
-// 				Accounts: []common.Address{address},
-// 			}
-// 			for _, header := range cmnd.foundHeaders[address] {
-// 				if event.BlockNumber == nil || header.Number.Cmp(event.BlockNumber) == 1 {
-// 					event.BlockNumber = header.Number
-// 				}
-// 			}
-// 			if event.BlockNumber != nil {
-// 				events[address] = event
-// 			}
-// 		}
-
-// 		for _, event := range events {
-// 			c.feed.Send(event)
-// 		}
-
-// 		c.feed.Send(walletevent.Event{
-// 			Type:        EventRecentHistoryReady,
-// 			Accounts:    c.accounts,
-// 			BlockNumber: target,
-// 		})
-// 	}
-
-// 	log.Info("end control command")
-// 	return err
-// }
-
-// func nonArchivalNodeError(err error) bool {
-// 	return strings.Contains(err.Error(), "missing trie node") ||
-// 		strings.Contains(err.Error(), "project ID does not have access to archive state")
-// }
-
-// func (c *controlCommand) NewError(err error) bool {
-// 	c.errorsCount++
-// 	log.Error("controlCommand error", "error", err, "counter", c.errorsCount)
-// 	if nonArchivalNodeError(err) {
-// 		log.Info("Non archival node detected")
-// 		c.nonArchivalRPCNode = true
-// 		c.feed.Send(walletevent.Event{
-// 			Type: EventNonArchivalNodeDetected,
-// 		})
-// 	}
-// 	if c.errorsCount >= 3 {
-// 		c.feed.Send(walletevent.Event{
-// 			Type:    EventFetchingHistoryError,
-// 			Message: err.Error(),
-// 		})
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (c *controlCommand) Command() async.Command {
-// 	return async.FiniteCommand{
-// 		Interval: 5 * time.Second,
-// 		Runable:  c.Run,
-// 	}.Run
-// }
-
-// type transfersCommand2 struct {
-// 	db                 *Database
-// 	eth                *ETHDownloader
-// 	firstKnownBlock    *Block
-// 	lastKnownBlock     *Block
-// 	address            common.Address
-// 	chainClient        *chain.ClientWithFallback
-// 	fetchedTransfers   []Transfer
-// 	transactionManager *TransactionManager
-// }
-
-// func (c *transfersCommand2) Command() async.Command {
-// 	return async.FiniteCommand{
-// 		Interval: 5 * time.Second,
-// 		Runable:  c.Run,
-// 	}.Run
-// }
-
-// func (c *transfersCommand2) Run(ctx context.Context) (err error) {
-// 	startTs := time.Now()
-
-// 	// allTransfers, err := getTransfersByBlocks(ctx, c.db, c.eth, c.blocks)
-// 	// if err != nil {
-// 	// 	log.Info("getTransfersByBlocks error", "error", err)
-// 	// 	return err
-// 	// }
-
-// 	// // Update MultiTransactionID from pending entry
-// 	// for index := range allTransfers {
-// 	// 	transfer := &allTransfers[index]
-// 	// 	if transfer.MultiTransactionID == NoMultiTransactionID {
-// 	// 		entry, err := c.transactionManager.GetPendingEntry(c.chainClient.ChainID, transfer.ID)
-// 	// 		if err != nil {
-// 	// 			if err == sql.ErrNoRows {
-// 	// 				// log.Info("Pending transaction not found for", "chainID", c.chainClient.ChainID, "transferID", transfer.ID)
-// 	// 			} else {
-// 	// 				return err
-// 	// 			}
-// 	// 		} else {
-// 	// 			transfer.MultiTransactionID = entry.MultiTransactionID
-// 	// 			if transfer.Receipt != nil && transfer.Receipt.Status == types.ReceiptStatusSuccessful {
-// 	// 				// TODO: Nim logic was deleting pending previously, should we notify UI about it?
-// 	// 				err := c.transactionManager.DeletePending(c.chainClient.ChainID, transfer.ID)
-// 	// 				if err != nil {
-// 	// 					return err
-// 	// 				}
-// 	// 			}
-// 	// 		}
-// 	// 	}
-// 	// }
-
-// 	// if len(allTransfers) > 0 {
-// 	// 	err = c.db.SaveTransfers(c.chainClient.ChainID, c.address, allTransfers, c.blocks)
-// 	// 	if err != nil {
-// 	// 		log.Error("SaveTransfers error", "error", err)
-// 	// 		return err
-// 	// 	}
-// 	// }
-
-// 	// c.fetchedTransfers = allTransfers
-// 	// log.Debug("transfers loaded", "address", c.address, "len", len(allTransfers), "in", time.Since(startTs))
-// 	log.Debug("transfers loaded", "in", time.Since(startTs))
-// 	return nil
-// }
-
-// type transfersCommand struct {
-// 	db                 *Database
-// 	eth                *ETHDownloader
-// 	block              *big.Int
-// 	address            common.Address
-// 	chainClient        *chain.ClientWithFallback
-// 	fetchedTransfers   []Transfer
-// 	transactionManager *TransactionManager
-// }
-
-// func (c *transfersCommand) Command() async.Command {
-// 	return async.FiniteCommand{
-// 		Interval: 5 * time.Second,
-// 		Runable:  c.Run,
-// 	}.Run
-// }
-
-// func (c *transfersCommand) Run(ctx context.Context) (err error) {
-// 	startTs := time.Now()
-
-// 	allTransfers, err := getTransfersByBlocks(ctx, c.db, c.eth, []*big.Int{c.block})
-// 	if err != nil {
-// 		log.Info("getTransfersByBlocks error", "error", err)
-// 		return err
-// 	}
-
-// 	// Update MultiTransactionID from pending entry
-// 	for index := range allTransfers {
-// 		transfer := &allTransfers[index]
-// 		if transfer.MultiTransactionID == NoMultiTransactionID {
-// 			entry, err := c.transactionManager.GetPendingEntry(c.chainClient.ChainID, transfer.ID)
-// 			if err != nil {
-// 				if err == sql.ErrNoRows {
-// 					// log.Info("Pending transaction not found for", "chainID", c.chainClient.ChainID, "transferID", transfer.ID)
-// 				} else {
-// 					return err
-// 				}
-// 			} else {
-// 				transfer.MultiTransactionID = entry.MultiTransactionID
-// 				if transfer.Receipt != nil && transfer.Receipt.Status == types.ReceiptStatusSuccessful {
-// 					// TODO: Nim logic was deleting pending previously, should we notify UI about it?
-// 					err := c.transactionManager.DeletePending(c.chainClient.ChainID, transfer.ID)
-// 					if err != nil {
-// 						return err
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
-
-// 	if len(allTransfers) > 0 {
-// 		err = c.db.SaveTransfers(c.chainClient.ChainID, c.address, allTransfers, []*big.Int{c.block})
-// 		if err != nil {
-// 			log.Error("SaveTransfers error", "error", err)
-// 			return err
-// 		}
-// 	}
-
-// 	c.fetchedTransfers = allTransfers
-// 	log.Debug("transfers loaded", "address", c.address, "len", len(allTransfers), "in", time.Since(startTs))
-// 	return nil
-// }
-
-// // type loadTransfersCommand struct {
-// // 	accounts                []common.Address
-// // 	db                      *Database
-// // 	block                   *Block
-// // 	chainClient             *chain.ClientWithFallback
-// // 	blocksByAddress         map[common.Address][]*big.Int
-// // 	foundTransfersByAddress map[common.Address][]Transfer
-// // 	transactionManager      *TransactionManager
-// // }
-
-// // func (c *loadTransfersCommand) Command() async.Command {
-// // 	return async.FiniteCommand{
-// // 		Interval: 5 * time.Second,
-// // 		Runable:  c.Run,
-// // 	}.Run
-// // }
-
-// // func (c *loadTransfersCommand) LoadTransfers(ctx context.Context, limit int, blocksByAddress map[common.Address][]*big.Int, transactionManager *TransactionManager) (map[common.Address][]Transfer, error) {
-// // 	return loadTransfers(ctx, c.accounts, c.block, c.db, c.chainClient, limit, blocksByAddress, c.transactionManager)
-// // }
-
-// // func (c *loadTransfersCommand) Run(parent context.Context) (err error) {
-// // 	transfersByAddress, err := c.LoadTransfers(parent, 40, c.blocksByAddress, c.transactionManager)
-// // 	if err != nil {
-// // 		return err
-// // 	}
-// // 	c.foundTransfersByAddress = transfersByAddress
-
-// // 	return
-// // }
 
 type findBlocksCommand struct {
 	account       common.Address
@@ -679,7 +109,8 @@ func (c *findBlocksCommand) Run(parent context.Context) (err error) {
 	log.Info("findBlocksCommand", "stopBlock", stopBlock)
 	if err != nil {
 		c.error = err
-		return err // In case c.noLimit is true, hystrix "max concurrency" may be reached and we will not be able to index ETH transfers
+		// return err // In case c.noLimit is true, hystrix "max concurrency" may be reached and we will not be able to index ETH transfers
+		return nil
 	}
 	if c.noLimit {
 		// newFromByAddress = map[common.Address]*big.Int{}
@@ -689,7 +120,8 @@ func (c *findBlocksCommand) Run(parent context.Context) (err error) {
 	// erc20Headers, err := []*DBHeader{}, nil
 	if err != nil {
 		c.error = err
-		return err
+		// return err
+		return nil
 	}
 
 	allHeaders := append(ethHeaders, erc20Headers...)
@@ -819,235 +251,296 @@ func (c *findBlocksCommand) fastIndexErc20(ctx context.Context, fromBlockNumber 
 	}
 }
 
-// func loadTransfers(ctx context.Context, accounts []common.Address, blockDAO *BlockDAO, db *Database,
-// 	chainClient *chain.ClientWithFallback, limit int, blocksByAddress map[common.Address][]*big.Int,
-// 	transactionManager *TransactionManager) (map[common.Address][]Transfer, error) {
+type loadAllTransfersCommand struct {
+	accounts []common.Address
+	db       *Database
+	// blockDAO           *BlockRangeSequentialDAO
+	blockDAO           *BlockDAO
+	eth                *ETHDownloader
+	erc20              *ERC20TransfersDownloader
+	chainClient        *chain.ClientWithFallback
+	feed               *event.Feed
+	errorsCount        int
+	nonArchivalRPCNode bool
+	transactionManager *TransactionManager
+}
 
-// 	log.Info("loadTransfers start", "accounts", accounts, "block", blockDAO, "limit", limit)
-// 	start := time.Now()
-// 	group := async.NewGroup(ctx)
+func (c *loadAllTransfersCommand) Run(parent context.Context) error {
+	log.Info("start load all transfers command")
+	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
+	head, err := c.chainClient.HeaderByNumber(ctx, nil)
+	cancel()
+	if err != nil {
+		// if c.NewError(err) {
+		// 	return nil
+		// }
+		return err
+	}
 
-// 	commands := []*transfersCommand{}
-// 	for _, address := range accounts {
-// 		blocks, ok := blocksByAddress[address]
+	if c.feed != nil {
+		c.feed.Send(walletevent.Event{
+			Type:     EventFetchingRecentHistory,
+			Accounts: c.accounts,
+		})
+	}
 
-// 		if !ok {
-// 			startBlockTs := time.Now()
-// 			blocks, _ = blockDAO.GetBlocksByAddress(chainClient.ChainID, address, numberOfBlocksCheckedPerIteration)
-// 			log.Info("loadTransfers blocks found for", "address", address, "in", time.Since(startBlockTs))
-// 		}
-// 		for _, block := range blocks {
-// 			transfers := &transfersCommand{
-// 				db:          db,
-// 				chainClient: chainClient,
-// 				address:     address,
-// 				eth: &ETHDownloader{
-// 					chainClient: chainClient,
-// 					accounts:    []common.Address{address},
-// 					signer:      types.NewLondonSigner(chainClient.ToBigInt()),
-// 					db:          db,
-// 				},
-// 				block:              block,
-// 				transactionManager: transactionManager,
-// 			}
-// 			commands = append(commands, transfers)
-// 			group.Add(transfers.Command())
-// 		}
-// 	}
-// 	log.Info("loadTransfers all blocks found", "in", time.Since(start))
-// 	allBlocksFoundTs := time.Now()
+	log.Info("current head is", "block number", head.Number)
+	// lastKnownEthBlocks, err := c.blockDAO.getLastKnownBlocks(c.chainClient.ChainID, c.accounts)
+	// if err != nil {
+	// 	log.Error("failed to load last head from database", "error", err)
+	// 	// if c.NewError(err) {
+	// 	// 	return nil
+	// 	// }
+	// 	return err
+	// }
 
-// 	select {
-// 	case <-ctx.Done():
-// 		return nil, ctx.Err()
-// 	case <-group.WaitAsync():
-// 		transfersByAddress := map[common.Address][]Transfer{}
-// 		for _, command := range commands {
-// 			if len(command.fetchedTransfers) == 0 {
-// 				continue
-// 			}
+	// firstKnownEthBlocks, err := c.blockDAO.getFirstKnownBlocks(c.chainClient.ChainID, c.accounts)
+	// if err != nil {
+	// 	log.Error("failed to load first block from database", "error", err)
+	// 	// if c.NewError(err) {
+	// 	// 	return nil
+	// 	// }
+	// 	return err
+	// }
 
-// 			transfers, ok := transfersByAddress[command.address]
-// 			if !ok {
-// 				transfers = []Transfer{}
-// 			}
+	// fromMap := map[common.Address]*big.Int{}
+	//
+	// if !c.nonArchivalRPCNode {
+	// 	fromMap, err = findFirstRanges(parent, accountsWithoutHistory, head.Number, c.chainClient)
+	// 	if err != nil {
+	// 		if c.NewError(err) {
+	// 			return nil
+	// 		}
+	// 		return err
+	// 	}
+	// }
 
-// 			for _, transfer := range command.fetchedTransfers {
-// 				transfersByAddress[command.address] = append(transfers, transfer)
-// 			}
-// 		}
-// 		log.Info("loadTransfers transfers found finished", "in", time.Since(allBlocksFoundTs))
-// 		log.Info("loadTransfers finished", "in", time.Since(start))
-// 		return transfersByAddress, nil
-// 	}
-// }
+	// target := head.Number
+	// fromByAddress := map[common.Address]*Block{}
+	// toByAddress := map[common.Address]*big.Int{}
 
-// func loadTransfers2(ctx context.Context, accounts []common.Address, blockDAO *BlockRangeSequentialDAO, db *Database,
-// 	chainClient *chain.ClientWithFallback, firstKnownBlocks map[common.Address]*Block,
-// 	lastKnownBlocks map[common.Address]*Block, transactionManager *TransactionManager) (map[common.Address][]Transfer, error) {
+	// for _, address := range c.accounts {
+	// 	from, _ := lastKnownEthBlocks[address]
+	// 	// from, ok := lastKnownEthBlocks[address]
+	// 	// TODO get last known block for accounts without history, but only a last block
+	// 	// if !ok {
+	// 	// 	from = &LastBlock{Number: fromMap[address]}
+	// 	// }
+	// 	if c.nonArchivalRPCNode {
+	// 		from = &Block{Number: big.NewInt(0).Sub(target, big.NewInt(100))} // Last 100 blocks? Why?
+	// 	}
 
-// 	log.Info("loadTransfers start", "accounts", accounts)
-// 	start := time.Now()
-// 	group := async.NewGroup(ctx)
+	// 	fromByAddress[address] = from
+	// 	toByAddress[address] = target
+	// }
 
-// 	commands := []*transfersCommand2{}
-// 	for _, address := range accounts {
-// 		// blocks, ok := blocksByAddress[address]
+	// bCache := newBalanceCache()
+	// for _, address := range c.accounts {
+	// cmnd := &findBlocksCommand{
+	// 	accounts:      c.accounts,
+	// 	db:            c.db,
+	// 	chainClient:   c.chainClient,
+	// 	balanceCache:  bCache,
+	// 	feed:          c.feed,
+	// 	fromByAddress: fromByAddress,
+	// 	toByAddress:   toByAddress,
+	// }
 
-// 		// if !ok {
-// 		// 	startBlockTs := time.Now()
+	// err = cmnd.Command()(parent)
+	// if err != nil {
+	// 	if c.NewError(err) {
+	// 		return nil
+	// 	}
+	// 	return err
+	// }
 
-// 		// 	// TODO Need to fetch only oldest loaded block, to be able to go backwards
-// 		// 	// block, _ := blockDAO.GetFirstKnownBlock(chainClient.ChainID, address)
-// 		// 	log.Info("loadTransfers blocks found for", "address", address, "in", time.Since(startBlockTs))
-// 		// }
+	// if cmnd.error != nil {
+	// 	if c.NewError(cmnd.error) {
+	// 		return nil
+	// 	}
+	// 	return cmnd.error
+	// }
 
-// 		// for _, block := range blocks {
-// 		transfers := &transfersCommand2{
-// 			db:          db,
-// 			chainClient: chainClient,
-// 			address:     address,
-// 			eth: &ETHDownloader{
-// 				chainClient: chainClient,
-// 				accounts:    []common.Address{address},
-// 				signer:      types.NewLondonSigner(chainClient.ToBigInt()),
-// 				db:          db,
-// 			},
-// 			firstKnownBlock:    firstKnownBlocks[address],
-// 			lastKnownBlock:     lastKnownBlocks[address],
-// 			transactionManager: transactionManager,
-// 		}
-// 		commands = append(commands, transfers)
-// 		group.Add(transfers.Command())
-// 		// }
-// 	}
-// 	log.Info("loadTransfers all blocks found", "in", time.Since(start))
-// 	allBlocksFoundTs := time.Now()
+	// loadTransfers2(ctx, c.accounts, c.blockDAO, c.db, c.chainClient,
+	// 	firstKnownEthBlocks, lastKnownEthBlocks, c.transactionManager)
 
-// 	select {
-// 	case <-ctx.Done():
-// 		return nil, ctx.Err()
-// 	case <-group.WaitAsync():
-// 		transfersByAddress := map[common.Address][]Transfer{}
-// 		for _, command := range commands {
-// 			if len(command.fetchedTransfers) == 0 {
-// 				continue
-// 			}
+	// _, err = c.LoadTransfers(parent, 40)
+	// if err != nil {
+	// 	if c.NewError(err) {
+	// 		return nil
+	// 	}
+	// 	return err
+	// }
 
-// 			transfers, ok := transfersByAddress[command.address]
-// 			if !ok {
-// 				transfers = []Transfer{}
-// 			}
+	// if c.feed != nil {
+	// 	events := map[common.Address]walletevent.Event{}
+	// 	for _, address := range c.accounts {
+	// 		event := walletevent.Event{
+	// 			Type:     EventNewTransfers,
+	// 			Accounts: []common.Address{address},
+	// 		}
+	// 		for _, header := range cmnd.foundHeaders[address] {
+	// 			if event.BlockNumber == nil || header.Number.Cmp(event.BlockNumber) == 1 {
+	// 				event.BlockNumber = header.Number
+	// 			}
+	// 		}
+	// 		if event.BlockNumber != nil {
+	// 			events[address] = event
+	// 		}
+	// 	}
 
-// 			for _, transfer := range command.fetchedTransfers {
-// 				transfersByAddress[command.address] = append(transfers, transfer)
-// 			}
-// 		}
-// 		log.Info("loadTransfers transfers found finished", "in", time.Since(allBlocksFoundTs))
-// 		log.Info("loadTransfers finished", "in", time.Since(start))
-// 		return transfersByAddress, nil
-// 	}
-// }
+	// 	for _, event := range events {
+	// 		c.feed.Send(event)
+	// 	}
 
-// func isBinanceChain(chainID uint64) bool {
-// 	return chainID == binancChainID || chainID == binanceTestChainID
-// }
+	// 	c.feed.Send(walletevent.Event{
+	// 		Type:        EventRecentHistoryReady,
+	// 		Accounts:    c.accounts,
+	// 		BlockNumber: target,
+	// 	})
+	// }
 
-// func getLowestFrom(chainID uint64, to *big.Int) *big.Int {
-// 	from := big.NewInt(0)
-// 	if isBinanceChain(chainID) && big.NewInt(0).Sub(to, from).Cmp(binanceChainMaxInitialRange) == 1 {
-// 		from = big.NewInt(0).Sub(to, binanceChainMaxInitialRange)
-// 	}
+	log.Info("end loadAllTransfers command")
+	return err
+}
 
-// 	return from
-// }
+// TODO REMOVE IT????
+func (c *loadAllTransfersCommand) Command() async.Command {
+	return async.InfiniteCommand{
+		Interval: 5 * time.Second,
+		Runable:  c.Run,
+	}.Run
+}
 
-// // Finds the latest range up to initialTo where the number of transactions is between 20 and 25
-// func findFirstRange(c context.Context, account common.Address, initialTo *big.Int, client *chain.ClientWithFallback) (*big.Int, error) {
-// 	from := getLowestFrom(client.ChainID, initialTo)
-// 	to := initialTo
-// 	goal := uint64(20)
+type transfersCommand2 struct {
+	db                 *Database
+	eth                *ETHDownloader
+	blockNum           *big.Int
+	address            common.Address
+	chainClient        *chain.ClientWithFallback
+	fetchedTransfers   []Transfer
+	transactionManager *TransactionManager
+}
 
-// 	if from.Cmp(to) == 0 {
-// 		return to, nil
-// 	}
+func (c *transfersCommand2) Command() async.Command {
+	return async.FiniteCommand{
+		Interval: 5 * time.Second,
+		Runable:  c.Run,
+	}.Run
+}
 
-// 	firstNonce, err := client.NonceAt(c, account, to) // this is the latest nonce actually
-// 	log.Info("find range with 20 <= len(tx) <= 25", "account", account, "firstNonce", firstNonce, "from", from, "to", to)
+func (c *transfersCommand2) Run(ctx context.Context) (err error) {
+	// log.Info("transfersCommands2 start", "address", c.address, "blockNum", c.blockNum)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// startTs := time.Now()
 
-// 	if firstNonce <= goal {
-// 		return from, nil
-// 	}
+	allTransfers, err := c.eth.GetTransfersByNumber(ctx, c.blockNum)
+	if err != nil {
+		log.Warn("GetTransfersByNumber error", "error", err)
+		return err
+	}
 
-// 	nonceDiff := firstNonce
-// 	iterations := 0
-// 	for iterations < 50 {
-// 		iterations = iterations + 1
+	// Update MultiTransactionID from pending entry
+	for index := range allTransfers {
+		transfer := &allTransfers[index]
+		if transfer.MultiTransactionID == NoMultiTransactionID {
+			entry, err := c.transactionManager.GetPendingEntry(c.chainClient.ChainID, transfer.ID)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					// log.Info("Pending transaction not found for", "chainID", c.chainClient.ChainID, "transferID", transfer.ID)
+				} else {
+					return err
+				}
+			} else {
+				transfer.MultiTransactionID = entry.MultiTransactionID
+				if transfer.Receipt != nil && transfer.Receipt.Status == types.ReceiptStatusSuccessful {
+					// TODO: Nim logic was deleting pending previously, should we notify UI about it?
+					err := c.transactionManager.DeletePending(c.chainClient.ChainID, transfer.ID)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
 
-// 		if nonceDiff > goal {
-// 			// from = (from + to) / 2
-// 			from = from.Add(from, to)
-// 			from = from.Div(from, big.NewInt(2))
-// 		} else {
-// 			// from = from - (to - from) / 2
-// 			// to = from
-// 			diff := big.NewInt(0).Sub(to, from)
-// 			diff.Div(diff, big.NewInt(2))
-// 			to = big.NewInt(from.Int64())
-// 			from.Sub(from, diff)
-// 		}
-// 		fromNonce, err := client.NonceAt(c, account, from)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		nonceDiff = firstNonce - fromNonce
+	if len(allTransfers) > 0 {
+		err = c.db.SaveTransfersOnly(c.chainClient.ChainID, c.address, allTransfers)
+		if err != nil {
+			log.Error("SaveTransfers error", "error", err)
+			return err
+		}
 
-// 		log.Info("next nonce", "from", from, "n", fromNonce, "diff", firstNonce-fromNonce)
+		err = markBlockHeadersAsLoaded(c.chainClient.ChainID, c.db, c.address, []*DBHeader{{Number: c.blockNum}})
+		if err != nil {
+			log.Error("markHeadersAsLoaded error", "error", err)
+			return
+		}
 
-// 		if goal <= nonceDiff && nonceDiff <= (goal+5) {
-// 			log.Info("range found", "account", account, "from", from, "to", to)
-// 			return from, nil
-// 		}
-// 	}
+		// return
+	}
 
-// 	log.Info("range found", "account", account, "from", from, "to", to)
+	c.fetchedTransfers = allTransfers
+	// log.Info("transfers loaded", "address", c.address, "len", len(allTransfers), "in", time.Since(startTs))
+	// log.Info("transfers loaded", "in", time.Since(startTs))
+	return nil
+}
 
-// 	return from, nil
-// }
+func loadTransfers2(ctx context.Context, account common.Address, blockDAO *BlockRangeSequentialDAO, db *Database,
+	// chainClient *chain.ClientWithFallback, blocks []*big.Int,
+	chainClient *chain.ClientWithFallback, headers []*DBHeader,
+	transactionManager *TransactionManager) ([]Transfer, error) {
 
-// // Finds the latest ranges up to initialTo where the number of transactions is between 20 and 25
-// func findFirstRanges(c context.Context, accounts []common.Address, initialTo *big.Int, client *chain.ClientWithFallback) (map[common.Address]*big.Int, error) {
-// 	res := map[common.Address]*big.Int{}
+	// log.Info("loadTransfers2 start", "account", account, "headers len", len(headers))
+	start := time.Now()
+	group := async.NewGroup(ctx)
 
-// 	for _, address := range accounts {
-// 		from, err := findFirstRange(c, address, initialTo, client)
-// 		if err != nil {
-// 			return nil, err
-// 		}
+	commands := []*transfersCommand2{}
+	// for _, address := range accounts {
+	// blocks, ok := blocksByAddress[address]
 
-// 		res[address] = from
-// 	}
+	// if !ok {
+	// 	startBlockTs := time.Now()
 
-// 	return res, nil
-// }
+	// 	// TODO Need to fetch only oldest loaded block, to be able to go backwards
+	// 	// block, _ := blockDAO.GetFirstKnownBlock(chainClient.ChainID, address)
+	// 	log.Info("loadTransfers blocks found for", "address", address, "in", time.Since(startBlockTs))
+	// }
 
-// func getTransfersByBlocks(ctx context.Context, db *Database, downloader *ETHDownloader, blocks []*big.Int) ([]Transfer, error) {
-// 	allTransfers := []Transfer{}
+	for _, block := range headers {
+		transfers := &transfersCommand2{
+			db:          db,
+			chainClient: chainClient,
+			address:     account,
+			eth: &ETHDownloader{
+				chainClient: chainClient,
+				accounts:    []common.Address{account},
+				signer:      types.NewLondonSigner(chainClient.ToBigInt()),
+				db:          db,
+			},
+			blockNum:           block.Number,
+			transactionManager: transactionManager,
+		}
+		commands = append(commands, transfers)
+		group.Add(transfers.Command())
+	}
+	// log.Info("loadTransfers all blocks found", "in", time.Since(start))
+	// allBlocksFoundTs := time.Now()
 
-// 	for _, block := range blocks {
-// 		transfers, err := downloader.GetTransfersByNumber(ctx, block)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		log.Debug("loadTransfers", "block", block, "new transfers", len(transfers))
-// 		if len(transfers) > 0 {
-// 			allTransfers = append(allTransfers, transfers...)
-// 		}
-// 	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-group.WaitAsync():
+		allTransfers := []Transfer{}
+		for _, command := range commands {
+			if len(command.fetchedTransfers) == 0 {
+				continue
+			}
 
-// 	return allTransfers, nil
-// }
+			allTransfers = append(allTransfers, command.fetchedTransfers...)
+		}
+		// log.Info("loadTransfers transfers only finished", "in", time.Since(allBlocksFoundTs))
+		log.Info("loadTransfers complete finished", "in", time.Since(start), "transfers", len(allTransfers))
+		return allTransfers, nil
+	}
+}
