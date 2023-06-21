@@ -305,7 +305,7 @@ func insertMultiTransaction(db *sql.DB, multiTransaction *MultiTransaction) (Mul
 	insert, err := db.Prepare(fmt.Sprintf(`INSERT OR REPLACE INTO multi_transactions (%s)
 											VALUES(?, ?, ?, ?, ?, ?, ?, ?)`, multiTransactionColumns))
 	if err != nil {
-		return 0, err
+		return NoMultiTransactionID, err
 	}
 	result, err := insert.Exec(
 		multiTransaction.FromAddress,
@@ -318,7 +318,7 @@ func insertMultiTransaction(db *sql.DB, multiTransaction *MultiTransaction) (Mul
 		time.Now().Unix(),
 	)
 	if err != nil {
-		return 0, err
+		return NoMultiTransactionID, err
 	}
 	defer insert.Close()
 	multiTransactionID, err := result.LastInsertId()
@@ -332,7 +332,31 @@ func (tm *TransactionManager) InsertMultiTransaction(multiTransaction *MultiTran
 func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Context, command *MultiTransactionCommand,
 	data []*bridge.TransactionBridge, bridges map[string]bridge.Bridge, password string, rpcClient *rpc.Client) (
 	*MultiTransactionCommandResult, error) {
-	// *MultiTransaction, error) {
+
+	multiTransaction := multiTransactionFromCommand(command)
+
+	multiTransactionID, err := insertMultiTransaction(tm.db, multiTransaction)
+	if err != nil {
+		return nil, err
+	}
+
+	hashes, err := tm.sendTransactions(multiTransaction, data, bridges, password, rpcClient)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tm.insertPendingTransactions(multiTransaction, hashes, data, multiTransactionID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MultiTransactionCommandResult{
+		ID:     int64(multiTransactionID),
+		Hashes: hashes,
+	}, nil
+}
+
+func multiTransactionFromCommand(command *MultiTransactionCommand) *MultiTransaction {
 
 	log.Info("Creating multi transaction", "command", command)
 
@@ -346,12 +370,16 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 		Type:        command.Type,
 	}
 
-	selectedAccount, err := tm.getVerifiedWalletAccount(multiTransaction.FromAddress.Hex(), password)
-	if err != nil {
-		return nil, err
-	}
+	return multiTransaction
+}
 
-	multiTransactionID, err := insertMultiTransaction(tm.db, multiTransaction)
+func (tm *TransactionManager) sendTransactions(multiTransaction *MultiTransaction,
+	data []*bridge.TransactionBridge, bridges map[string]bridge.Bridge, password string, rpcClient *rpc.Client) (
+	map[uint64][]types.Hash, error) {
+
+	log.Info("Making transactions", "multiTransaction", multiTransaction)
+
+	selectedAccount, err := tm.getVerifiedWalletAccount(multiTransaction.FromAddress.Hex(), password)
 	if err != nil {
 		return nil, err
 	}
@@ -359,22 +387,6 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 	hashes := make(map[uint64][]types.Hash)
 	for _, tx := range data {
 		hash, err := bridges[tx.BridgeName].Send(tx, selectedAccount)
-		if err != nil {
-			return nil, err
-		}
-		pendingTransaction := PendingTransaction{
-			Hash:               common.Hash(hash),
-			Timestamp:          uint64(time.Now().Unix()),
-			Value:              bigint.BigInt{Int: multiTransaction.FromAmount.ToInt()},
-			From:               common.Address(tx.From()),
-			To:                 common.Address(tx.To()),
-			Data:               tx.Data().String(),
-			Type:               WalletTransfer,
-			ChainID:            tx.ChainID,
-			MultiTransactionID: multiTransactionID,
-			Symbol:             multiTransaction.FromAsset,
-		}
-		err = tm.AddPending(pendingTransaction)
 		if err != nil {
 			return nil, err
 		}
@@ -386,11 +398,34 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 		// }
 		// tm.Watch(ctx, common.Hash(hash), chainClient)
 	}
+	return hashes, nil
+}
 
-	return &MultiTransactionCommandResult{
-		ID:     int64(multiTransactionID),
-		Hashes: hashes,
-	}, nil
+func (tm *TransactionManager) insertPendingTransactions(multiTransaction *MultiTransaction,
+	hashes map[uint64][]types.Hash, transactions []*bridge.TransactionBridge,
+	multiTransactionID MultiTransactionIDType) error {
+
+	for _, tx := range transactions {
+		for _, hash := range hashes[tx.ChainID] {
+			pendingTransaction := PendingTransaction{
+				Hash:               common.Hash(hash),
+				Timestamp:          uint64(time.Now().Unix()),
+				Value:              bigint.BigInt{Int: multiTransaction.FromAmount.ToInt()},
+				From:               common.Address(tx.From()),
+				To:                 common.Address(tx.To()),
+				Data:               tx.Data().String(),
+				Type:               WalletTransfer,
+				ChainID:            tx.ChainID,
+				MultiTransactionID: multiTransactionID,
+				Symbol:             multiTransaction.FromAsset,
+			}
+			err := tm.AddPending(pendingTransaction)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (tm *TransactionManager) GetMultiTransactions(ctx context.Context, ids []MultiTransactionIDType) ([]*MultiTransaction, error) {
