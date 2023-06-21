@@ -4,23 +4,22 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/status-im/status-go/eth-node/types"
 )
 
 // transactionSentToUpstreamEvent represents an event that one can subscribe to
 type transactionSentToUpstreamEvent struct {
 	sxMu     sync.Mutex
-	sx       map[int]chan types.Hash
-	listener chan types.Hash
+	sx       map[int]chan common.Hash
+	listener chan common.Hash
 	quit     chan struct{}
 }
 
 func newTransactionSentToUpstreamEvent() *transactionSentToUpstreamEvent {
 	return &transactionSentToUpstreamEvent{
-		sx:       make(map[int]chan types.Hash),
-		listener: make(chan types.Hash),
+		sx:       make(map[int]chan common.Hash),
+		listener: make(chan common.Hash),
 	}
 }
 
@@ -32,9 +31,11 @@ func (e *transactionSentToUpstreamEvent) Start() error {
 	e.quit = make(chan struct{})
 
 	go func() {
+		log.Info("Started listening for transactions sent to upstream")
 		for {
 			select {
 			case transactionHash := <-e.listener:
+				log.Info("Received transaction sent to upstream event", "hash", transactionHash)
 				if e.numberOfSubscriptions() == 0 {
 					continue
 				}
@@ -54,7 +55,7 @@ func (e *transactionSentToUpstreamEvent) numberOfSubscriptions() int {
 	return len(e.sx)
 }
 
-func (e *transactionSentToUpstreamEvent) processTransactionSentToUpstream(transactionHash types.Hash) {
+func (e *transactionSentToUpstreamEvent) processTransactionSentToUpstream(transactionHash common.Hash) {
 
 	e.sxMu.Lock()
 	defer e.sxMu.Unlock()
@@ -83,11 +84,11 @@ func (e *transactionSentToUpstreamEvent) Stop() {
 	e.quit = nil
 }
 
-func (e *transactionSentToUpstreamEvent) Subscribe() (int, chan types.Hash) {
+func (e *transactionSentToUpstreamEvent) Subscribe() (int, chan common.Hash) {
 	e.sxMu.Lock()
 	defer e.sxMu.Unlock()
 
-	channel := make(chan types.Hash, 512)
+	channel := make(chan common.Hash, 512)
 	id := len(e.sx)
 	e.sx[id] = channel
 	return id, channel
@@ -101,6 +102,6 @@ func (e *transactionSentToUpstreamEvent) Unsubscribe(id int) {
 }
 
 // Trigger gets called in order to trigger the event
-func (e *transactionSentToUpstreamEvent) Trigger(transactionHash types.Hash) {
+func (e *transactionSentToUpstreamEvent) Trigger(transactionHash common.Hash) {
 	e.listener <- transactionHash
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/params"
+	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/rpc/chain"
 	"github.com/status-im/status-go/services/wallet/async"
 	"github.com/status-im/status-go/services/wallet/bigint"
@@ -151,6 +152,8 @@ func rowsToTransactions(rows *sql.Rows) (transactions []*PendingTransaction, err
 }
 
 func (tm *TransactionManager) GetAllPending(chainIDs []uint64) ([]*PendingTransaction, error) {
+	log.Info("Getting all pending transactions", "chainIDs", chainIDs)
+
 	if len(chainIDs) == 0 {
 		return nil, errors.New("at least 1 chainID is required")
 	}
@@ -171,6 +174,8 @@ func (tm *TransactionManager) GetAllPending(chainIDs []uint64) ([]*PendingTransa
 }
 
 func (tm *TransactionManager) GetPendingByAddress(chainIDs []uint64, address common.Address) ([]*PendingTransaction, error) {
+	log.Info("Getting pending transaction by address", "chainIDs", chainIDs, "address", address)
+
 	if len(chainIDs) == 0 {
 		return nil, errors.New("at least 1 chainID is required")
 	}
@@ -195,6 +200,8 @@ func (tm *TransactionManager) GetPendingByAddress(chainIDs []uint64, address com
 // GetPendingEntry returns sql.ErrNoRows if no pending transaction is found for the given identity
 // TODO: consider using address also in case we expect to have also for the receiver
 func (tm *TransactionManager) GetPendingEntry(chainID uint64, hash common.Hash) (*PendingTransaction, error) {
+	log.Info("Getting pending transaction", "chainID", chainID, "hash", hash)
+
 	row := tm.db.QueryRow(`SELECT timestamp, value, from_address, to_address, data,
 								symbol, gas_price, gas_limit, type, additional_data,
 								network_id, COALESCE(multi_transaction_id, 0)
@@ -256,11 +263,14 @@ func (tm *TransactionManager) AddPending(transaction PendingTransaction) error {
 }
 
 func (tm *TransactionManager) DeletePending(chainID uint64, hash common.Hash) error {
+	log.Info("Deleting pending transaction", "chainID", chainID, "hash", hash)
 	_, err := tm.db.Exec(`DELETE FROM pending_transactions WHERE network_id = ? AND hash = ?`, chainID, hash)
 	return err
 }
 
 func (tm *TransactionManager) Watch(ctx context.Context, transactionHash common.Hash, client *chain.ClientWithFallback) error {
+	log.Info("Watching transaction", "chainID", client.ChainID, "hash", transactionHash)
+
 	watchTxCommand := &watchTransactionCommand{
 		hash:   transactionHash,
 		client: client,
@@ -269,7 +279,24 @@ func (tm *TransactionManager) Watch(ctx context.Context, transactionHash common.
 	commandContext, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	return watchTxCommand.Command()(commandContext)
+	err := watchTxCommand.Command()(commandContext)
+	if err != nil {
+		log.Error("watchTxCommand error", "error", err, "chainID", client.ChainID, "hash", transactionHash)
+		return err
+	}
+
+	// group := async.NewGroup(commandContext)
+	// group.Add(watchTxCommand.Command())
+
+	// select {
+	// case <-ctx.Done():
+	// 	err := ctx.Err()
+	// 	log.Info("watchTxCommand canceled", "error", err, "chainID", client.ChainID, "hash", transactionHash)
+	// 	return err
+	// case <-group.WaitAsync():
+	// 	log.Debug("watchTxCommand finished", "chainID", client.ChainID, "hash", transactionHash)
+	return tm.DeletePending(client.ChainID, transactionHash)
+	// }
 }
 
 const multiTransactionColumns = "from_address, from_asset, from_amount, to_address, to_asset, to_amount, type, timestamp"
@@ -302,7 +329,13 @@ func (tm *TransactionManager) InsertMultiTransaction(multiTransaction *MultiTran
 	return insertMultiTransaction(tm.db, multiTransaction)
 }
 
-func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Context, command *MultiTransactionCommand, data []*bridge.TransactionBridge, bridges map[string]bridge.Bridge, password string) (*MultiTransactionCommandResult, error) {
+func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Context, command *MultiTransactionCommand,
+	data []*bridge.TransactionBridge, bridges map[string]bridge.Bridge, password string, rpcClient *rpc.Client) (
+	*MultiTransactionCommandResult, error) {
+	// *MultiTransaction, error) {
+
+	log.Info("Creating multi transaction", "command", command)
+
 	multiTransaction := &MultiTransaction{
 		FromAddress: command.FromAddress,
 		ToAddress:   command.ToAddress,
@@ -346,6 +379,12 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 			return nil, err
 		}
 		hashes[tx.ChainID] = append(hashes[tx.ChainID], hash)
+
+		// chainClient, err := rpcClient.EthClient(tx.ChainID)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// tm.Watch(ctx, common.Hash(hash), chainClient)
 	}
 
 	return &MultiTransactionCommandResult{

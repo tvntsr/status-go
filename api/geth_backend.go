@@ -14,6 +14,7 @@ import (
 
 	"github.com/imdario/mergo"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -29,7 +30,7 @@ import (
 	"github.com/status-im/status-go/logutils"
 	"github.com/status-im/status-go/multiaccounts"
 	"github.com/status-im/status-go/multiaccounts/accounts"
-	"github.com/status-im/status-go/multiaccounts/common"
+	multiAccCommon "github.com/status-im/status-go/multiaccounts/common"
 	"github.com/status-im/status-go/multiaccounts/settings"
 	"github.com/status-im/status-go/node"
 	"github.com/status-im/status-go/nodecfg"
@@ -1021,7 +1022,7 @@ func (b *GethStatusBackend) generateOrImportAccount(mnemonic string, request *re
 	account := multiaccounts.Account{
 		KeyUID:             info.KeyUID,
 		Name:               request.DisplayName,
-		CustomizationColor: common.CustomizationColor(request.CustomizationColor),
+		CustomizationColor: multiAccCommon.CustomizationColor(request.CustomizationColor),
 		KDFIterations:      sqlite.ReducedKDFIterationsNumber,
 	}
 
@@ -1546,7 +1547,8 @@ func (b *GethStatusBackend) SendTransaction(sendArgs transactions.SendTxArgs, pa
 		return
 	}
 
-	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
+	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
+	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
 
 	return
 }
@@ -1562,7 +1564,8 @@ func (b *GethStatusBackend) SendTransactionWithChainID(chainID uint64, sendArgs 
 		return
 	}
 
-	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
+	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
+	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
 
 	return
 }
@@ -1573,7 +1576,8 @@ func (b *GethStatusBackend) SendTransactionWithSignature(sendArgs transactions.S
 		return
 	}
 
-	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
+	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
+	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
 
 	return
 }

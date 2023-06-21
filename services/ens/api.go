@@ -30,7 +30,6 @@ import (
 	"github.com/status-im/status-go/contracts/registrar"
 	"github.com/status-im/status-go/contracts/resolver"
 	"github.com/status-im/status-go/contracts/snt"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/services/rpcfilters"
@@ -354,7 +353,8 @@ func (api *API) Release(ctx context.Context, chainID uint64, txArgs transactions
 		return "", err
 	}
 
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
 
 	err = api.Remove(ctx, chainID, fullDomainName(username))
 
@@ -439,7 +439,8 @@ func (api *API) Register(ctx context.Context, chainID uint64, txArgs transaction
 		return "", err
 	}
 
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
 	err = api.Add(ctx, chainID, fullDomainName(username))
 
 	if err != nil {
@@ -545,7 +546,8 @@ func (api *API) SetPubKey(ctx context.Context, chainID uint64, txArgs transactio
 		return "", err
 	}
 
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
 	err = api.Add(ctx, chainID, fullDomainName(username))
 
 	if err != nil {

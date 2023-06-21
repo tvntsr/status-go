@@ -71,7 +71,8 @@ func (api *API) Buy(ctx context.Context, chainID uint64, txArgs transactions.Sen
 
 	// TODO: track pending transaction (do this in ENS service too)
 
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
 	return tx.Hash().String(), nil
 }
 

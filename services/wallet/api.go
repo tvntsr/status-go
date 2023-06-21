@@ -279,30 +279,6 @@ func (api *API) GetPendingOutboundTransactionsByAddressAndChainID(ctx context.Co
 	return rst, err
 }
 
-func (api *API) StorePendingTransaction(ctx context.Context, trx transfer.PendingTransaction) error {
-	log.Debug("call to create or edit pending transaction")
-	if trx.ChainID == 0 {
-		trx.ChainID = api.s.rpcClient.UpstreamChainID
-	}
-	err := api.s.transactionManager.AddPending(trx)
-	log.Debug("result from database for creating or editing a pending transaction", "err", err)
-	return err
-}
-
-func (api *API) DeletePendingTransaction(ctx context.Context, transactionHash common.Hash) error {
-	log.Debug("call to remove pending transaction")
-	err := api.s.transactionManager.DeletePending(api.s.rpcClient.UpstreamChainID, transactionHash)
-	log.Debug("result from database for remove pending transaction", "err", err)
-	return err
-}
-
-func (api *API) DeletePendingTransactionByChainID(ctx context.Context, chainID uint64, transactionHash common.Hash) error {
-	log.Debug("call to remove pending transaction")
-	err := api.s.transactionManager.DeletePending(chainID, transactionHash)
-	log.Debug("result from database for remove pending transaction", "err", err)
-	return err
-}
-
 func (api *API) WatchTransaction(ctx context.Context, transactionHash common.Hash) error {
 	chainClient, err := api.s.rpcClient.EthClient(api.s.rpcClient.UpstreamChainID)
 	if err != nil {
@@ -516,7 +492,7 @@ func (api *API) GetAddressDetails(ctx context.Context, chainID uint64, address s
 
 func (api *API) CreateMultiTransaction(ctx context.Context, multiTransactionCommand *transfer.MultiTransactionCommand, data []*bridge.TransactionBridge, password string) (*transfer.MultiTransactionCommandResult, error) {
 	log.Debug("[WalletAPI:: CreateMultiTransaction] create multi transaction")
-	return api.s.transactionManager.CreateMultiTransactionFromCommand(ctx, multiTransactionCommand, data, api.router.bridges, password)
+	return api.s.transactionManager.CreateMultiTransactionFromCommand(ctx, multiTransactionCommand, data, api.router.bridges, password, api.s.rpcClient)
 }
 
 func (api *API) GetMultiTransactions(ctx context.Context, transactionIDs []transfer.MultiTransactionIDType) ([]*transfer.MultiTransaction, error) {

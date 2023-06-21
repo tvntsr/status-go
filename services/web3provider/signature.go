@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	signercore "github.com/ethereum/go-ethereum/signer/core/apitypes"
@@ -82,7 +83,8 @@ func (api *API) sendTransaction(chainID uint64, sendArgs transactions.SendTxArgs
 		return
 	}
 
-	go api.s.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(hash)
+	// go api.s.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(hash)
+	go api.s.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
 
 	return
 }

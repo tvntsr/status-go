@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -103,3 +104,85 @@ func TestGetFilterLogs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, block, rst)
 }
+
+func TestNewPendingTransactionFilter(t *testing.T) {
+
+	tracker := new(callTracker)
+	api := &PublicAPI{
+		filters:                        make(map[rpc.ID]filter),
+		client:                         func() ContextCaller { return tracker },
+		chainID:                        func() uint64 { return 1 },
+		transactionSentToUpstreamEvent: newTransactionSentToUpstreamEvent(),
+	}
+
+	require.NoError(t, api.transactionSentToUpstreamEvent.Start())
+	defer api.transactionSentToUpstreamEvent.Stop()
+
+	id := api.NewPendingTransactionFilter()
+
+	hashes, err := api.GetFilterChanges(id)
+	require.NoError(t, err)
+
+	require.Equal(t, 0, len(hashes.([]common.Hash)))
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// Do it async, otherwise no event will be received
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		t.Log("triggering transactionSentToUpstreamEvent")
+		// api.transactionSentToUpstreamEvent.Trigger(types.HexToHash("0xAA"))
+		api.transactionSentToUpstreamEvent.Trigger(common.HexToHash("0xAA"))
+		wg.Done()
+	}()
+	wg.Wait()
+
+	time.Sleep(1000 * time.Millisecond)
+	t.Log("getting filter changes")
+	hashes, err = api.GetFilterChanges(id)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(hashes.([]common.Hash)))
+}
+
+// var transactionHashes = []types.Hash{types.HexToHash("0xAA"), types.HexToHash("0xBB"), types.HexToHash("0xCC")}
+
+// func TestTransactionSentToUpstreamEventMultipleSubscribe(t *testing.T) {
+// 	event := newTransactionSentToUpstreamEvent()
+// 	require.NoError(t, event.Start())
+// 	defer event.Stop()
+
+// 	var subscriptionChannels []chan types.Hash
+// 	for i := 0; i < 3; i++ {
+// 		id, channel := event.Subscribe()
+// 		// test id assignment
+// 		require.Equal(t, i, id)
+// 		// test numberOfSubscriptions
+// 		require.Equal(t, event.numberOfSubscriptions(), i+1)
+// 		subscriptionChannels = append(subscriptionChannels, channel)
+// 	}
+
+// 	var wg sync.WaitGroup
+
+// 	wg.Add(9)
+// 	go func() {
+// 		for _, channel := range subscriptionChannels {
+// 			ch := channel
+// 			go func() {
+// 				for _, expectedHash := range transactionHashes {
+// 					select {
+// 					case receivedHash := <-ch:
+// 						require.Equal(t, expectedHash, receivedHash)
+// 					case <-time.After(1 * time.Second):
+// 						assert.Fail(t, "timeout")
+// 					}
+// 					wg.Done()
+// 				}
+// 			}()
+// 		}
+// 	}()
+
+// 	for _, hashToTrigger := range transactionHashes {
+// 		event.Trigger(hashToTrigger)
+// 	}
+// 	wg.Wait()
+// }

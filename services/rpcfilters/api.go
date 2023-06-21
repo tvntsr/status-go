@@ -154,12 +154,14 @@ func (api *PublicAPI) NewPendingTransactionFilter() getrpc.ID {
 	api.filters[id] = f
 
 	go func() {
+		log.Info("subscribing to transactionSentToUpstreamEvent")
 		id, s := api.transactionSentToUpstreamEvent.Subscribe()
 		defer api.transactionSentToUpstreamEvent.Unsubscribe(id)
 
 		for {
 			select {
 			case hash := <-s:
+				log.Info("received hash from transactionSentToUpstreamEvent", "hash", hash)
 				if err := f.add(hash); err != nil {
 					log.Error("error adding value to filter", "hash", hash, "error", err)
 				}
