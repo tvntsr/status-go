@@ -17,6 +17,7 @@ import (
 	w_common "github.com/status-im/status-go/services/wallet/common"
 	"github.com/status-im/status-go/services/wallet/token"
 	"github.com/status-im/status-go/services/wallet/walletevent"
+	"github.com/status-im/status-go/transactions"
 )
 
 const (
@@ -437,10 +438,10 @@ func (c *transfersCommand) Run(ctx context.Context) (err error) {
 
 func (c *transfersCommand) checkAndProcessPendingMultiTx(subTx *Transfer) (MultiTransactionIDType, error) {
 	// Update MultiTransactionID from pending entry
-	entry, err := c.transactionManager.GetPendingEntry(c.chainClient.ChainID, subTx.ID)
+	entry, err := c.transactionManager.pendingManager.GetPendingEntry(c.chainClient.ChainID, subTx.ID)
 	if err == nil {
 		// Propagate the MultiTransactionID, in case the pending entry was a multi-transaction
-		return entry.MultiTransactionID, nil
+		return MultiTransactionIDType(entry.MultiTransactionID), nil
 	} else if err != sql.ErrNoRows {
 		log.Error("GetPendingEntry error", "error", err)
 		return NoMultiTransactionID, err
@@ -530,6 +531,7 @@ type loadTransfersCommand struct {
 	chainClient        *chain.ClientWithFallback
 	blocksByAddress    map[common.Address][]*big.Int
 	transactionManager *TransactionManager
+	pendingManager     *transactions.TransactionManager
 	blocksLimit        int
 	tokenManager       *token.Manager
 	feed               *event.Feed

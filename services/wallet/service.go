@@ -87,7 +87,8 @@ func NewService(
 	})
 	tokenManager := token.NewTokenManager(db, rpcClient, rpcClient.NetworkManager)
 	savedAddressesManager := &SavedAddressesManager{db: db}
-	transactionManager := transfer.NewTransactionManager(db, gethManager, transactor, config, accountsDB)
+	pendingTxManager := transactions.NewTransactionManager(db)
+	transactionManager := transfer.NewTransactionManager(db, gethManager, transactor, config, accountsDB, pendingTxManager)
 	transferController := transfer.NewTransferController(db, rpcClient, accountFeed, walletFeed, transactionManager, tokenManager, config.WalletConfig.LoadAllTransfers)
 	cryptoCompare := cryptocompare.NewClient()
 	coingecko := coingecko.NewClient()
@@ -107,6 +108,7 @@ func NewService(
 		tokenManager:          tokenManager,
 		savedAddressesManager: savedAddressesManager,
 		transactionManager:    transactionManager,
+		pendingTxManager:      pendingTxManager,
 		transferController:    transferController,
 		cryptoOnRampManager:   cryptoOnRampManager,
 		collectiblesManager:   collectiblesManager,
@@ -134,6 +136,7 @@ type Service struct {
 	savedAddressesManager *SavedAddressesManager
 	tokenManager          *token.Manager
 	transactionManager    *transfer.TransactionManager
+	pendingTxManager      *transactions.TransactionManager
 	cryptoOnRampManager   *CryptoOnRampManager
 	transferController    *transfer.Controller
 	feesManager           *FeeManager

@@ -17,30 +17,38 @@ import (
 	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
-	"github.com/status-im/status-go/rpc/chain"
-	"github.com/status-im/status-go/services/wallet/async"
 	"github.com/status-im/status-go/services/wallet/bigint"
 	"github.com/status-im/status-go/services/wallet/bridge"
 	wallet_common "github.com/status-im/status-go/services/wallet/common"
 	"github.com/status-im/status-go/transactions"
 )
 
+type MultiTransactionIDType int64
+
+const (
+	NoMultiTransactionID = MultiTransactionIDType(0)
+)
+
 type TransactionManager struct {
-	db          *sql.DB
-	gethManager *account.GethManager
-	transactor  *transactions.Transactor
-	config      *params.NodeConfig
-	accountsDB  *accounts.Database
+	db             *sql.DB
+	gethManager    *account.GethManager
+	transactor     *transactions.Transactor
+	config         *params.NodeConfig
+	accountsDB     *accounts.Database
+	pendingManager *transactions.TransactionManager
 }
 
 func NewTransactionManager(db *sql.DB, gethManager *account.GethManager, transactor *transactions.Transactor,
-	config *params.NodeConfig, accountsDB *accounts.Database) *TransactionManager {
+	config *params.NodeConfig, accountsDB *accounts.Database,
+	pendingTxManager *transactions.TransactionManager) *TransactionManager {
+
 	return &TransactionManager{
-		db:          db,
-		gethManager: gethManager,
-		transactor:  transactor,
-		config:      config,
-		accountsDB:  accountsDB,
+		db:             db,
+		gethManager:    gethManager,
+		transactor:     transactor,
+		config:         config,
+		accountsDB:     accountsDB,
+		pendingManager: pendingTxManager,
 	}
 }
 
@@ -79,224 +87,10 @@ type MultiTransactionCommandResult struct {
 	Hashes map[uint64][]types.Hash `json:"hashes"`
 }
 
-type PendingTrxType string
-
-const (
-	RegisterENS                   PendingTrxType = "RegisterENS"
-	ReleaseENS                    PendingTrxType = "ReleaseENS"
-	SetPubKey                     PendingTrxType = "SetPubKey"
-	BuyStickerPack                PendingTrxType = "BuyStickerPack"
-	WalletTransfer                PendingTrxType = "WalletTransfer"
-	CollectibleDeployment         PendingTrxType = "CollectibleDeployment"
-	CollectibleAirdrop            PendingTrxType = "CollectibleAirdrop"
-	CollectibleRemoteSelfDestruct PendingTrxType = "CollectibleRemoteSelfDestruct"
-	CollectibleBurn               PendingTrxType = "CollectibleBurn"
-)
-
-type PendingTransaction struct {
-	Hash               common.Hash            `json:"hash"`
-	Timestamp          uint64                 `json:"timestamp"`
-	Value              bigint.BigInt          `json:"value"`
-	From               common.Address         `json:"from"`
-	To                 common.Address         `json:"to"`
-	Data               string                 `json:"data"`
-	Symbol             string                 `json:"symbol"`
-	GasPrice           bigint.BigInt          `json:"gasPrice"`
-	GasLimit           bigint.BigInt          `json:"gasLimit"`
-	Type               PendingTrxType         `json:"type"`
-	AdditionalData     string                 `json:"additionalData"`
-	ChainID            uint64                 `json:"network_id"`
-	MultiTransactionID MultiTransactionIDType `json:"multi_transaction_id"`
-}
-
 type TransactionIdentity struct {
 	ChainID wallet_common.ChainID `json:"chainId"`
 	Hash    common.Hash           `json:"hash"`
 	Address common.Address        `json:"address"`
-}
-
-const selectFromPending = `SELECT hash, timestamp, value, from_address, to_address, data,
-								symbol, gas_price, gas_limit, type, additional_data,
-								network_id, COALESCE(multi_transaction_id, 0)
-							FROM pending_transactions
-							`
-
-func rowsToTransactions(rows *sql.Rows) (transactions []*PendingTransaction, err error) {
-	for rows.Next() {
-		transaction := &PendingTransaction{
-			Value:    bigint.BigInt{Int: new(big.Int)},
-			GasPrice: bigint.BigInt{Int: new(big.Int)},
-			GasLimit: bigint.BigInt{Int: new(big.Int)},
-		}
-		err := rows.Scan(&transaction.Hash,
-			&transaction.Timestamp,
-			(*bigint.SQLBigIntBytes)(transaction.Value.Int),
-			&transaction.From,
-			&transaction.To,
-			&transaction.Data,
-			&transaction.Symbol,
-			(*bigint.SQLBigIntBytes)(transaction.GasPrice.Int),
-			(*bigint.SQLBigIntBytes)(transaction.GasLimit.Int),
-			&transaction.Type,
-			&transaction.AdditionalData,
-			&transaction.ChainID,
-			&transaction.MultiTransactionID,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		transactions = append(transactions, transaction)
-	}
-	return transactions, nil
-}
-
-func (tm *TransactionManager) GetAllPending(chainIDs []uint64) ([]*PendingTransaction, error) {
-	log.Info("Getting all pending transactions", "chainIDs", chainIDs)
-
-	if len(chainIDs) == 0 {
-		return nil, errors.New("at least 1 chainID is required")
-	}
-
-	inVector := strings.Repeat("?, ", len(chainIDs)-1) + "?"
-	var parameters []interface{}
-	for _, c := range chainIDs {
-		parameters = append(parameters, c)
-	}
-
-	rows, err := tm.db.Query(fmt.Sprintf(selectFromPending+"WHERE network_id in (%s)", inVector), parameters...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return rowsToTransactions(rows)
-}
-
-func (tm *TransactionManager) GetPendingByAddress(chainIDs []uint64, address common.Address) ([]*PendingTransaction, error) {
-	log.Info("Getting pending transaction by address", "chainIDs", chainIDs, "address", address)
-
-	if len(chainIDs) == 0 {
-		return nil, errors.New("at least 1 chainID is required")
-	}
-
-	inVector := strings.Repeat("?, ", len(chainIDs)-1) + "?"
-	var parameters []interface{}
-	for _, c := range chainIDs {
-		parameters = append(parameters, c)
-	}
-
-	parameters = append(parameters, address)
-
-	rows, err := tm.db.Query(fmt.Sprintf(selectFromPending+"WHERE network_id in (%s) AND from_address = ?", inVector), parameters...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return rowsToTransactions(rows)
-}
-
-// GetPendingEntry returns sql.ErrNoRows if no pending transaction is found for the given identity
-// TODO: consider using address also in case we expect to have also for the receiver
-func (tm *TransactionManager) GetPendingEntry(chainID uint64, hash common.Hash) (*PendingTransaction, error) {
-	log.Info("Getting pending transaction", "chainID", chainID, "hash", hash)
-
-	row := tm.db.QueryRow(`SELECT timestamp, value, from_address, to_address, data,
-								symbol, gas_price, gas_limit, type, additional_data,
-								network_id, COALESCE(multi_transaction_id, 0)
-							FROM pending_transactions
-							WHERE network_id = ? AND hash = ?`, chainID, hash)
-	transaction := &PendingTransaction{
-		Hash:     hash,
-		Value:    bigint.BigInt{Int: new(big.Int)},
-		GasPrice: bigint.BigInt{Int: new(big.Int)},
-		GasLimit: bigint.BigInt{Int: new(big.Int)},
-		ChainID:  chainID,
-	}
-	err := row.Scan(
-		&transaction.Timestamp,
-		(*bigint.SQLBigIntBytes)(transaction.Value.Int),
-		&transaction.From,
-		&transaction.To,
-		&transaction.Data,
-		&transaction.Symbol,
-		(*bigint.SQLBigIntBytes)(transaction.GasPrice.Int),
-		(*bigint.SQLBigIntBytes)(transaction.GasLimit.Int),
-		&transaction.Type,
-		&transaction.AdditionalData,
-		&transaction.ChainID,
-		&transaction.MultiTransactionID,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return transaction, nil
-}
-
-func (tm *TransactionManager) AddPending(transaction PendingTransaction) error {
-	insert, err := tm.db.Prepare(`INSERT OR REPLACE INTO pending_transactions
-                                      (network_id, hash, timestamp, value, from_address, to_address,
-                                       data, symbol, gas_price, gas_limit, type, additional_data, multi_transaction_id)
-                                      VALUES
-                                      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		return err
-	}
-	_, err = insert.Exec(
-		transaction.ChainID,
-		transaction.Hash,
-		transaction.Timestamp,
-		(*bigint.SQLBigIntBytes)(transaction.Value.Int),
-		transaction.From,
-		transaction.To,
-		transaction.Data,
-		transaction.Symbol,
-		(*bigint.SQLBigIntBytes)(transaction.GasPrice.Int),
-		(*bigint.SQLBigIntBytes)(transaction.GasLimit.Int),
-		transaction.Type,
-		transaction.AdditionalData,
-		transaction.MultiTransactionID,
-	)
-	return err
-}
-
-func (tm *TransactionManager) DeletePending(chainID uint64, hash common.Hash) error {
-	log.Info("Deleting pending transaction", "chainID", chainID, "hash", hash)
-	_, err := tm.db.Exec(`DELETE FROM pending_transactions WHERE network_id = ? AND hash = ?`, chainID, hash)
-	return err
-}
-
-func (tm *TransactionManager) Watch(ctx context.Context, transactionHash common.Hash, client *chain.ClientWithFallback) error {
-	log.Info("Watching transaction", "chainID", client.ChainID, "hash", transactionHash)
-
-	watchTxCommand := &watchTransactionCommand{
-		hash:   transactionHash,
-		client: client,
-	}
-
-	commandContext, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer cancel()
-
-	err := watchTxCommand.Command()(commandContext)
-	if err != nil {
-		log.Error("watchTxCommand error", "error", err, "chainID", client.ChainID, "hash", transactionHash)
-		return err
-	}
-
-	// group := async.NewGroup(commandContext)
-	// group.Add(watchTxCommand.Command())
-
-	// select {
-	// case <-ctx.Done():
-	// 	err := ctx.Err()
-	// 	log.Info("watchTxCommand canceled", "error", err, "chainID", client.ChainID, "hash", transactionHash)
-	// 	return err
-	// case <-group.WaitAsync():
-	// 	log.Debug("watchTxCommand finished", "chainID", client.ChainID, "hash", transactionHash)
-	return tm.DeletePending(client.ChainID, transactionHash)
-	// }
 }
 
 const multiTransactionColumns = "from_address, from_asset, from_amount, to_address, to_asset, to_amount, type, timestamp"
@@ -345,7 +139,21 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 		return nil, err
 	}
 
-	err = tm.insertPendingTransactions(multiTransaction, hashes, data, multiTransactionID)
+	// TODO check if such type already exists: data to TransactionDTO
+	var transactionDTOs []*transactions.TransactionDTO
+	for _, tx := range data {
+		transactionDTOs = append(transactionDTOs, &transactions.TransactionDTO{
+			ChainID: tx.ChainID,
+			From:    common.Address(tx.From()),
+			To:      common.Address(tx.To()),
+			Data:    tx.Data().String(),
+		})
+	}
+
+	fromAmount := bigint.BigInt{Int: multiTransaction.FromAmount.ToInt()}
+	fromAsset := multiTransaction.FromAsset
+	// TODO avoid calling directly?
+	err = tm.pendingManager.InsertPendingTransactions(fromAmount, fromAsset, hashes, transactionDTOs, int64(multiTransactionID))
 	if err != nil {
 		return nil, err
 	}
@@ -399,33 +207,6 @@ func (tm *TransactionManager) sendTransactions(multiTransaction *MultiTransactio
 		// tm.Watch(ctx, common.Hash(hash), chainClient)
 	}
 	return hashes, nil
-}
-
-func (tm *TransactionManager) insertPendingTransactions(multiTransaction *MultiTransaction,
-	hashes map[uint64][]types.Hash, transactions []*bridge.TransactionBridge,
-	multiTransactionID MultiTransactionIDType) error {
-
-	for _, tx := range transactions {
-		for _, hash := range hashes[tx.ChainID] {
-			pendingTransaction := PendingTransaction{
-				Hash:               common.Hash(hash),
-				Timestamp:          uint64(time.Now().Unix()),
-				Value:              bigint.BigInt{Int: multiTransaction.FromAmount.ToInt()},
-				From:               common.Address(tx.From()),
-				To:                 common.Address(tx.To()),
-				Data:               tx.Data().String(),
-				Type:               WalletTransfer,
-				ChainID:            tx.ChainID,
-				MultiTransactionID: multiTransactionID,
-				Symbol:             multiTransaction.FromAsset,
-			}
-			err := tm.AddPending(pendingTransaction)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (tm *TransactionManager) GetMultiTransactions(ctx context.Context, ids []MultiTransactionIDType) ([]*MultiTransaction, error) {
@@ -512,33 +293,4 @@ func (tm *TransactionManager) getVerifiedWalletAccount(address, password string)
 		Address:    key.Address,
 		AccountKey: key,
 	}, nil
-}
-
-type watchTransactionCommand struct {
-	client *chain.ClientWithFallback
-	hash   common.Hash
-}
-
-func (c *watchTransactionCommand) Command() async.Command {
-	return async.FiniteCommand{
-		Interval: 10 * time.Second,
-		Runable:  c.Run,
-	}.Run
-}
-
-func (c *watchTransactionCommand) Run(ctx context.Context) error {
-	requestContext, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	_, isPending, err := c.client.TransactionByHash(requestContext, c.hash)
-
-	if err != nil {
-		log.Error("Watching transaction error", "error", err)
-		return err
-	}
-
-	if isPending {
-		return errors.New("transaction is pending")
-	}
-
-	return nil
 }
