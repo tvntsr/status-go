@@ -17,6 +17,7 @@ import (
 	"github.com/status-im/status-go/services/utils"
 	"github.com/status-im/status-go/services/wallet/bigint"
 	"github.com/status-im/status-go/transactions"
+	"github.com/status-im/status-go/services/rpcfilters"
 )
 
 func (api *API) Buy(ctx context.Context, chainID uint64, txArgs transactions.SendTxArgs, packID *bigint.BigInt, password string) (string, error) {
@@ -72,7 +73,13 @@ func (api *API) Buy(ctx context.Context, chainID uint64, txArgs transactions.Sen
 	// TODO: track pending transaction (do this in ENS service too)
 
 	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
+	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
+    go api.rpcFiltersSrvc.TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(tx.Hash()),
+		Type:    string(transactions.WalletTransfer),
+		From:    common.Address(txArgs.From),
+		ChainID: chainID,
+	})
 	return tx.Hash().String(), nil
 }
 

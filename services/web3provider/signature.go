@@ -12,6 +12,7 @@ import (
 	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/services/typeddata"
 	"github.com/status-im/status-go/transactions"
+    "github.com/status-im/status-go/services/rpcfilters"
 )
 
 // signMessage checks the pwd vs the selected account and signs a message
@@ -84,7 +85,12 @@ func (api *API) sendTransaction(chainID uint64, sendArgs transactions.SendTxArgs
 	}
 
 	// go api.s.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(hash)
-	go api.s.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
+    go api.s.rpcFiltersSrvc.TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(hash),
+		Type:    string(transactions.WalletTransfer),
+		From:    common.Address(sendArgs.From),
+		ChainID: chainID,
+	})
 
 	return
 }

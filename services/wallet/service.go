@@ -16,6 +16,7 @@ import (
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/services/ens"
+	"github.com/status-im/status-go/services/rpcfilters"
 	"github.com/status-im/status-go/services/stickers"
 	"github.com/status-im/status-go/services/wallet/activity"
 	"github.com/status-im/status-go/services/wallet/collectibles"
@@ -49,6 +50,7 @@ func NewService(
 	config *params.NodeConfig,
 	ens *ens.Service,
 	stickers *stickers.Service,
+	rpcFilterSrvc *rpcfilters.Service,
 	nftMetadataProvider thirdparty.NFTMetadataProvider,
 ) *Service {
 	cryptoOnRampManager := NewCryptoOnRampManager(&CryptoOnRampOptions{
@@ -87,7 +89,7 @@ func NewService(
 	})
 	tokenManager := token.NewTokenManager(db, rpcClient, rpcClient.NetworkManager)
 	savedAddressesManager := &SavedAddressesManager{db: db}
-	pendingTxManager := transactions.NewTransactionManager(db)
+	pendingTxManager := transactions.NewTransactionManager(db, rpcFilterSrvc.TransactionSentToUpstreamEvent())
 	transactionManager := transfer.NewTransactionManager(db, gethManager, transactor, config, accountsDB, pendingTxManager)
 	transferController := transfer.NewTransferController(db, rpcClient, accountFeed, walletFeed, transactionManager, tokenManager, config.WalletConfig.LoadAllTransfers)
 	cryptoCompare := cryptocompare.NewClient()
@@ -118,6 +120,7 @@ func NewService(
 		transactor:            transactor,
 		ens:                   ens,
 		stickers:              stickers,
+		rpcFilterSrvc:         rpcFilterSrvc,
 		feed:                  walletFeed,
 		signals:               signals,
 		reader:                reader,
@@ -147,6 +150,7 @@ type Service struct {
 	transactor            *transactions.Transactor
 	ens                   *ens.Service
 	stickers              *stickers.Service
+	rpcFilterSrvc         *rpcfilters.Service
 	feed                  *event.Feed
 	signals               *walletevent.SignalsTransmitter
 	reader                *Reader
@@ -162,6 +166,7 @@ func (s *Service) Start() error {
 	s.currency.Start()
 	err := s.signals.Start()
 	s.history.Start()
+	s.pendingTxManager.Start()
 	s.started = true
 	return err
 }
@@ -180,6 +185,7 @@ func (s *Service) Stop() error {
 	s.reader.Stop()
 	s.history.Stop()
 	s.activity.Stop()
+	s.pendingTxManager.Stop()
 	s.started = false
 	log.Info("wallet stopped")
 	return nil

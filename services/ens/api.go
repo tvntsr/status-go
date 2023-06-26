@@ -354,7 +354,12 @@ func (api *API) Release(ctx context.Context, chainID uint64, txArgs transactions
 	}
 
 	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(tx.Hash()),
+		Type:    string(transactions.ReleaseENS),
+		From:    common.Address(txArgs.From),
+		ChainID: chainID,
+	})
 
 	err = api.Remove(ctx, chainID, fullDomainName(username))
 
@@ -440,7 +445,12 @@ func (api *API) Register(ctx context.Context, chainID uint64, txArgs transaction
 	}
 
 	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(tx.Hash()),
+		Type:    string(transactions.RegisterENS),
+		From:    common.Address(txArgs.From),
+		ChainID: chainID,
+	})
 	err = api.Add(ctx, chainID, fullDomainName(username))
 
 	if err != nil {
@@ -547,7 +557,12 @@ func (api *API) SetPubKey(ctx context.Context, chainID uint64, txArgs transactio
 	}
 
 	// go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(types.Hash(tx.Hash()))
-	go api.rpcFiltersSrvc.TriggerTransactionSentToUpstreamEvent(common.Hash(tx.Hash()))
+	go api.rpcFiltersSrvc.TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(tx.Hash()),
+		Type:    string(transactions.SetPubKey),
+		From:    common.Address(txArgs.From),
+		ChainID: chainID,
+	})
 	err = api.Add(ctx, chainID, fullDomainName(username))
 
 	if err != nil {

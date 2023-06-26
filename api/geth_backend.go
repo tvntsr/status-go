@@ -42,6 +42,7 @@ import (
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/services/ext"
 	"github.com/status-im/status-go/services/personal"
+	"github.com/status-im/status-go/services/rpcfilters"
 	"github.com/status-im/status-go/services/typeddata"
 	"github.com/status-im/status-go/signal"
 	"github.com/status-im/status-go/sqlite"
@@ -1548,7 +1549,13 @@ func (b *GethStatusBackend) SendTransaction(sendArgs transactions.SendTxArgs, pa
 	}
 
 	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
-	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
+	// go b.statusNode.RPCFiltersService().TransactionSentToUpstreamEvent.Trigger()(common.Hash(hash))
+	go b.statusNode.RPCFiltersService().TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(hash),
+		Type:    string(transactions.WalletTransfer),
+		From:    common.Address(sendArgs.From),
+		ChainID: b.transactor.NetworkID(),
+	})
 
 	return
 }
@@ -1565,7 +1572,13 @@ func (b *GethStatusBackend) SendTransactionWithChainID(chainID uint64, sendArgs 
 	}
 
 	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
-	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
+	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
+	go b.statusNode.RPCFiltersService().TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(hash),
+		Type:    string(transactions.WalletTransfer),
+		From:    common.Address(sendArgs.From),
+		ChainID: b.transactor.NetworkID(),
+	})
 
 	return
 }
@@ -1577,7 +1590,13 @@ func (b *GethStatusBackend) SendTransactionWithSignature(sendArgs transactions.S
 	}
 
 	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(hash)
-	go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
+	// go b.statusNode.RPCFiltersService().TriggerTransactionSentToUpstreamEvent(common.Hash(hash))
+	go b.statusNode.RPCFiltersService().TransactionSentToUpstreamEvent().Trigger(&rpcfilters.PendingTxInfo{
+		Hash:    common.Hash(hash),
+		Type:    string(transactions.WalletTransfer),
+		From:    common.Address(sendArgs.From),
+		ChainID: b.transactor.NetworkID(),
+	})
 
 	return
 }

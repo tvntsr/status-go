@@ -36,11 +36,14 @@ type TransactionManager struct {
 	config         *params.NodeConfig
 	accountsDB     *accounts.Database
 	pendingManager *transactions.TransactionManager
+	// rpcFilterSrvc  *rpcfilters.Service
 }
 
 func NewTransactionManager(db *sql.DB, gethManager *account.GethManager, transactor *transactions.Transactor,
 	config *params.NodeConfig, accountsDB *accounts.Database,
 	pendingTxManager *transactions.TransactionManager) *TransactionManager {
+	// rpcFiltersSrvc *rpcfilters.Service) *TransactionManager {
+	// pendingTxManager *transactions.TransactionManager) *TransactionManager {
 
 	return &TransactionManager{
 		db:             db,
@@ -49,6 +52,7 @@ func NewTransactionManager(db *sql.DB, gethManager *account.GethManager, transac
 		config:         config,
 		accountsDB:     accountsDB,
 		pendingManager: pendingTxManager,
+		// rpcFilterSrvc:  rpcFiltersSrvc,
 	}
 }
 
@@ -139,21 +143,7 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 		return nil, err
 	}
 
-	// TODO check if such type already exists: data to TransactionDTO
-	var transactionDTOs []*transactions.TransactionDTO
-	for _, tx := range data {
-		transactionDTOs = append(transactionDTOs, &transactions.TransactionDTO{
-			ChainID: tx.ChainID,
-			From:    common.Address(tx.From()),
-			To:      common.Address(tx.To()),
-			Data:    tx.Data().String(),
-		})
-	}
-
-	fromAmount := bigint.BigInt{Int: multiTransaction.FromAmount.ToInt()}
-	fromAsset := multiTransaction.FromAsset
-	// TODO avoid calling directly?
-	err = tm.pendingManager.InsertPendingTransactions(fromAmount, fromAsset, hashes, transactionDTOs, int64(multiTransactionID))
+	err = tm.storePendingTransactions(multiTransactionID, multiTransaction, hashes, data)
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +152,43 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 		ID:     int64(multiTransactionID),
 		Hashes: hashes,
 	}, nil
+}
+
+func (tm *TransactionManager) storePendingTransactions(multiTransactionID MultiTransactionIDType,
+	multiTransaction *MultiTransaction, hashes map[uint64][]types.Hash, data []*bridge.TransactionBridge) error {
+
+	txs := createPendingTransactions(hashes, data, multiTransactionID, multiTransaction)
+	for _, tx := range txs {
+		err := tm.pendingManager.AddPending(tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createPendingTransactions(hashes map[uint64][]types.Hash, data []*bridge.TransactionBridge,
+	multiTransactionID MultiTransactionIDType, multiTransaction *MultiTransaction) []*transactions.PendingTransaction {
+
+	txs := make([]*transactions.PendingTransaction, 0)
+	for _, tx := range data {
+		for _, hash := range hashes[tx.ChainID] {
+			pendingTransaction := &transactions.PendingTransaction{
+				Hash:               common.Hash(hash),
+				Timestamp:          uint64(time.Now().Unix()),
+				Value:              bigint.BigInt{Int: multiTransaction.FromAmount.ToInt()},
+				From:               common.Address(tx.From()),
+				To:                 common.Address(tx.To()),
+				Data:               tx.Data().String(),
+				Type:               transactions.WalletTransfer,
+				ChainID:            tx.ChainID,
+				MultiTransactionID: int64(multiTransactionID),
+				Symbol:             multiTransaction.FromAsset,
+			}
+			txs = append(txs, pendingTransaction)
+		}
+	}
+	return txs
 }
 
 func multiTransactionFromCommand(command *MultiTransactionCommand) *MultiTransaction {
@@ -199,12 +226,6 @@ func (tm *TransactionManager) sendTransactions(multiTransaction *MultiTransactio
 			return nil, err
 		}
 		hashes[tx.ChainID] = append(hashes[tx.ChainID], hash)
-
-		// chainClient, err := rpcClient.EthClient(tx.ChainID)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// tm.Watch(ctx, common.Hash(hash), chainClient)
 	}
 	return hashes, nil
 }

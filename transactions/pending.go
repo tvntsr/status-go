@@ -11,8 +11,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/rpc/chain"
+	"github.com/status-im/status-go/services/rpcfilters"
 	"github.com/status-im/status-go/services/wallet/async"
 	"github.com/status-im/status-go/services/wallet/bigint"
 	// "github.com/status-im/status-go/services/wallet/bridge"
@@ -20,13 +20,59 @@ import (
 )
 
 type TransactionManager struct {
-	db *sql.DB
+	db             *sql.DB
+	pendingTxEvent rpcfilters.ChainEvent
+	quit           chan struct{}
 }
 
-func NewTransactionManager(db *sql.DB) *TransactionManager {
+func NewTransactionManager(db *sql.DB, pendingTxEvent rpcfilters.ChainEvent) *TransactionManager {
 	return &TransactionManager{
-		db: db,
+		db:             db,
+		pendingTxEvent: pendingTxEvent,
 	}
+}
+
+func (tm *TransactionManager) Start() error {
+	if tm.quit != nil {
+		return errors.New("latest transaction sent to upstream event is already started")
+	}
+
+	tm.quit = make(chan struct{})
+
+	go func() {
+		_, ch := tm.pendingTxEvent.Subscribe()
+		for {
+			select {
+			case tx := <-ch:
+				log.Info("Pending transaction event received", tx)
+				tm.AddPending(&PendingTransaction{
+					Hash:      tx.Hash,
+					Timestamp: uint64(time.Now().Unix()),
+					From:      tx.From,
+					ChainID:   tx.ChainID,
+				})
+			case <-tm.quit:
+				return
+			}
+		}
+	}()
+
+	return tm.pendingTxEvent.Start()
+}
+
+func (tm *TransactionManager) Stop() {
+	if tm.quit == nil {
+		return
+	}
+
+	select {
+	case <-tm.quit:
+		return
+	default:
+		close(tm.quit)
+	}
+
+	tm.quit = nil
 }
 
 type PendingTrxType string
@@ -42,13 +88,6 @@ const (
 	CollectibleRemoteSelfDestruct PendingTrxType = "CollectibleRemoteSelfDestruct"
 	CollectibleBurn               PendingTrxType = "CollectibleBurn"
 )
-
-type TransactionDTO struct {
-	From    common.Address `json:"from"`
-	To      common.Address `json:"to"`
-	Data    string         `json:"data"`
-	ChainID uint64         `json:"network_id"`
-}
 
 type PendingTransaction struct {
 	Hash           common.Hash    `json:"hash"`
@@ -187,7 +226,7 @@ func (tm *TransactionManager) GetPendingEntry(chainID uint64, hash common.Hash) 
 	return transaction, nil
 }
 
-func (tm *TransactionManager) AddPending(transaction PendingTransaction) error {
+func (tm *TransactionManager) AddPending(transaction *PendingTransaction) error {
 	insert, err := tm.db.Prepare(`INSERT OR REPLACE INTO pending_transactions
                                       (network_id, hash, timestamp, value, from_address, to_address,
                                        data, symbol, gas_price, gas_limit, type, additional_data, multi_transaction_id)
@@ -249,35 +288,6 @@ func (tm *TransactionManager) Watch(ctx context.Context, transactionHash common.
 	// 	log.Debug("watchTxCommand finished", "chainID", client.ChainID, "hash", transactionHash)
 	return tm.DeletePending(client.ChainID, transactionHash)
 	// }
-}
-
-func (tm *TransactionManager) InsertPendingTransactions(fromAmount bigint.BigInt, fromAsset string,
-	hashes map[uint64][]types.Hash, transactions []*TransactionDTO,
-	// hashes map[uint64][]types.Hash, transactions []*bridge.TransactionBridge,
-	multiTransactionID int64) error {
-	// multiTransactionID transfers.MultiTransactionIDType) error {
-
-	for _, tx := range transactions {
-		for _, hash := range hashes[tx.ChainID] {
-			pendingTransaction := PendingTransaction{
-				Hash:               common.Hash(hash),
-				Timestamp:          uint64(time.Now().Unix()),
-				Value:              fromAmount,
-				From:               tx.From,
-				To:                 tx.To,
-				Data:               tx.Data,
-				Type:               WalletTransfer,
-				ChainID:            tx.ChainID,
-				MultiTransactionID: multiTransactionID,
-				Symbol:             fromAsset,
-			}
-			err := tm.AddPending(pendingTransaction)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 type watchTransactionCommand struct {

@@ -33,6 +33,13 @@ type filter interface {
 	deadline() *time.Timer
 }
 
+type ChainEvent interface {
+	Start() error
+	Stop()
+	Subscribe() (int, chan *PendingTxInfo)
+	Unsubscribe(id int)
+}
+
 // PublicAPI represents filter API that is exported to `eth` namespace
 type PublicAPI struct {
 	filtersMu sync.Mutex
@@ -144,7 +151,7 @@ func (api *PublicAPI) NewBlockFilter() getrpc.ID {
 
 // NewPendingTransactionFilter is an implementation of `eth_newPendingTransactionFilter` API
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_newpendingtransactionfilter
-func (api *PublicAPI) NewPendingTransactionFilter() getrpc.ID {
+func (api *PublicAPI) NewPendingTransactionFilter() (getrpc.ID, ChainEvent) {
 	api.filtersMu.Lock()
 	defer api.filtersMu.Unlock()
 
@@ -172,7 +179,7 @@ func (api *PublicAPI) NewPendingTransactionFilter() getrpc.ID {
 
 	}()
 
-	return id
+	return id, api.transactionSentToUpstreamEvent
 
 }
 

@@ -17,7 +17,7 @@ func TestTransactionSentToUpstreamEventMultipleSubscribe(t *testing.T) {
 	require.NoError(t, event.Start())
 	defer event.Stop()
 
-	var subscriptionChannels []chan common.Hash
+	var subscriptionChannels []chan *PendingTxInfo
 	for i := 0; i < 3; i++ {
 		id, channel := event.Subscribe()
 		// test id assignment
