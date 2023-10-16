@@ -1095,7 +1095,7 @@ func (m *Messenger) RequestToJoinCommunity(request *requests.RequestToJoinCommun
 		CommunityID:       community.ID(),
 		SkipProtocolLayer: true,
 		MessageType:       protobuf.ApplicationMetadataMessage_COMMUNITY_REQUEST_TO_JOIN,
-		PubsubTopic:       common.DefaultNonProtectedPubsubTopic(community.Shard()),
+		PubsubTopic:       transport.DefaultNonProtectedPubsubTopic(community.Shard().TransportShard()),
 	}
 
 	_, err = m.sender.SendCommunityMessage(context.Background(), rawMessage)
@@ -1413,7 +1413,7 @@ func (m *Messenger) CancelRequestToJoinCommunity(request *requests.CancelRequest
 		CommunityID:       community.ID(),
 		SkipProtocolLayer: true,
 		MessageType:       protobuf.ApplicationMetadataMessage_COMMUNITY_CANCEL_REQUEST_TO_JOIN,
-		PubsubTopic:       common.DefaultNonProtectedPubsubTopic(community.Shard()),
+		PubsubTopic:       transport.DefaultNonProtectedPubsubTopic(community.Shard().TransportShard()),
 	}
 	_, err = m.sender.SendCommunityMessage(context.Background(), rawMessage)
 
@@ -1529,7 +1529,7 @@ func (m *Messenger) AcceptRequestToJoinCommunity(request *requests.AcceptRequest
 			Sender:            community.PrivateKey(),
 			SkipProtocolLayer: true,
 			MessageType:       protobuf.ApplicationMetadataMessage_COMMUNITY_REQUEST_TO_JOIN_RESPONSE,
-			PubsubTopic:       common.DefaultNonProtectedPubsubTopic(community.Shard()),
+			PubsubTopic:       transport.DefaultNonProtectedPubsubTopic(community.Shard().TransportShard()),
 		}
 
 		_, err = m.sender.SendPrivate(context.Background(), pk, rawMessage)

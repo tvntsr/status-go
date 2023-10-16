@@ -228,7 +228,7 @@ func New(nodeKey string, fleet string, cfg *Config, logger *zap.Logger, appDB *s
 		EnableDiscV5:      cfg.EnableDiscV5,
 	}
 
-	waku.filters = common.NewFilters(waku.logger)
+	waku.filters = common.NewFilters(cfg.DefaultShardPubsubTopic, waku.logger)
 	waku.bandwidthCounter = metrics.NewBandwidthCounter()
 
 	var privateKey *ecdsa.PrivateKey
@@ -930,7 +930,7 @@ func (w *Waku) GetSymKey(id string) ([]byte, error) {
 // and subsequent storing of incoming messages.
 func (w *Waku) Subscribe(f *common.Filter) (string, error) {
 	if f.PubsubTopic == "" {
-		f.PubsubTopic = relay.DefaultWakuTopic
+		f.PubsubTopic = w.cfg.DefaultShardPubsubTopic
 	}
 
 	id, err := w.filters.Install(f)
@@ -1026,7 +1026,7 @@ func (w *Waku) broadcast() {
 // network in the coming cycles.
 func (w *Waku) Send(pubsubTopic string, msg *pb.WakuMessage) ([]byte, error) {
 	if pubsubTopic == "" {
-		pubsubTopic = relay.DefaultWakuTopic
+		pubsubTopic = w.cfg.DefaultShardPubsubTopic
 	}
 
 	if w.protectedTopicStore != nil {
@@ -1247,8 +1247,7 @@ func (w *Waku) setupRelaySubscriptions() error {
 		}
 	}
 
-	// Default Waku Topic (TODO: remove once sharding is added)
-	err := w.subscribeToPubsubTopicWithWakuRelay(relay.DefaultWakuTopic, nil)
+	err := w.subscribeToPubsubTopicWithWakuRelay(w.cfg.DefaultShardPubsubTopic, nil)
 	if err != nil {
 		return err
 	}

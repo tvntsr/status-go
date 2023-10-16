@@ -22,8 +22,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
-	"github.com/waku-org/go-waku/waku/v2/protocol/relay"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/event"
@@ -1618,7 +1616,7 @@ func (m *Messenger) Init() error {
 	logger := m.logger.With(zap.String("site", "Init"))
 
 	// Community requests will arrive in this pubsub topic
-	err := m.SubscribeToPubsubTopic(common.DefaultNonProtectedPubsubTopic(nil), nil)
+	err := m.SubscribeToPubsubTopic(transport.DefaultNonProtectedPubsubTopic(nil), nil)
 	if err != nil {
 		return err
 	}
@@ -1731,7 +1729,7 @@ func (m *Messenger) Init() error {
 
 		switch chat.ChatType {
 		case ChatTypePublic, ChatTypeProfile:
-			filtersToInit = append(filtersToInit, transport.FiltersToInitialize{ChatID: chat.ID, PubsubTopic: relay.DefaultWakuTopic})
+			filtersToInit = append(filtersToInit, transport.FiltersToInitialize{ChatID: chat.ID, PubsubTopic: transport.DefaultShardPubsubTopic()})
 		case ChatTypeCommunityChat:
 			communityID, err := hexutil.Decode(chat.CommunityID)
 			if err != nil {

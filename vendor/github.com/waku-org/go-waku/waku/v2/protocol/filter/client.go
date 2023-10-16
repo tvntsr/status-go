@@ -263,12 +263,10 @@ func (wf *WakuFilterLightNode) Subscribe(ctx context.Context, contentFilter prot
 	optList := DefaultSubscriptionOptions()
 	optList = append(optList, opts...)
 	for _, opt := range optList {
-		opt(params)
-	}
-
-	if params.selectedPeer == "" {
-		wf.metrics.RecordError(peerNotFoundFailure)
-		return nil, ErrNoPeersAvailable
+		err := opt(params)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	pubSubTopicMap, err := contentFilterToPubSubTopicMap(contentFilter)
@@ -278,16 +276,42 @@ func (wf *WakuFilterLightNode) Subscribe(ctx context.Context, contentFilter prot
 	failedContentTopics := []string{}
 	subscriptions := make([]*subscription.SubscriptionDetails, 0)
 	for pubSubTopic, cTopics := range pubSubTopicMap {
+		var selectedPeer peer.ID
+		//TO Optimize: find a peer with all pubSubTopics in the list if possible, if not only then look for single pubSubTopic
+		if params.pm != nil && params.selectedPeer == "" {
+			selectedPeer, err = wf.pm.SelectPeer(
+				peermanager.PeerSelectionCriteria{
+					SelectionType: params.peerSelectionType,
+					Proto:         FilterSubscribeID_v20beta1,
+					PubsubTopic:   pubSubTopic,
+					SpecificPeers: params.preferredPeers,
+					Ctx:           ctx,
+				},
+			)
+		} else {
+			selectedPeer = params.selectedPeer
+		}
+
+		if selectedPeer == "" {
+			wf.metrics.RecordError(peerNotFoundFailure)
+			wf.log.Error("selecting peer", zap.String("pubSubTopic", pubSubTopic), zap.Strings("contentTopics", cTopics),
+				zap.Error(err))
+			failedContentTopics = append(failedContentTopics, cTopics...)
+			continue
+		}
+
 		var cFilter protocol.ContentFilter
 		cFilter.PubsubTopic = pubSubTopic
 		cFilter.ContentTopics = protocol.NewContentTopicSet(cTopics...)
+
 		err := wf.request(ctx, params, pb.FilterSubscribeRequest_SUBSCRIBE, cFilter)
 		if err != nil {
 			wf.log.Error("Failed to subscribe", zap.String("pubSubTopic", pubSubTopic), zap.Strings("contentTopics", cTopics),
 				zap.Error(err))
 			failedContentTopics = append(failedContentTopics, cTopics...)
+			continue
 		}
-		subscriptions = append(subscriptions, wf.subscriptions.NewSubscription(params.selectedPeer, cFilter))
+		subscriptions = append(subscriptions, wf.subscriptions.NewSubscription(selectedPeer, cFilter))
 	}
 
 	if len(failedContentTopics) > 0 {
@@ -317,7 +341,10 @@ func (wf *WakuFilterLightNode) getUnsubscribeParameters(opts ...FilterSubscribeO
 	params.log = wf.log
 	opts = append(DefaultUnsubscribeOptions(), opts...)
 	for _, opt := range opts {
-		opt(params)
+		err := opt(params)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return params, nil
