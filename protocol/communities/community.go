@@ -1266,7 +1266,7 @@ func (o *Community) DefaultFilters() []transport.FiltersToInitialize {
 
 	return []transport.FiltersToInitialize{
 		{ChatID: cID, PubsubTopic: communityPubsubTopic},
-		{ChatID: uncompressedPubKey, PubsubTopic: transport.DefaultShardPubsubTopic()}, // TODO: messages that are not protected are sent in default pubsub topic for now
+		{ChatID: uncompressedPubKey, PubsubTopic: transport.DefaultNonProtectedPubsubTopic(o.Shard().TransportShard())}, // Non protected community messages
 		{ChatID: uncompressedPubKey, PubsubTopic: communityPubsubTopic},
 		{ChatID: updatesChannelID, PubsubTopic: communityPubsubTopic},
 		{ChatID: mlChannelID, PubsubTopic: communityPubsubTopic},
