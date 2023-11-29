@@ -5,11 +5,9 @@
 # - https://nixos.wiki/wiki/Overlays
 # - https://nixos.org/nixos/nix-pills/callpackage-design-pattern.html
 
-self: super:
-
+{ pkgs }:
 let
-  /* FIXME not sure if the stdenv and other are usefull*/
-  inherit (super) stdenv stdenvNoCC callPackage;
+  
 in {
   /* FIXME not sure for the pkgs*/
   androidPkgs = pkgs.androidenv.composeAndroidPackages {

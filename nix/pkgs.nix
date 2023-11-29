@@ -13,13 +13,31 @@ let
   };
 
   # Status specific configuration defaults
-  default_config = {
+  defaultConfig = {
       allowUnfree = true;
       android_sdk.accept_license = true;
-    }
+  };
   # Override some packages and utilities
-  pkgsOverlay = import ./overlay.nix;
-
+  # FIXME: doesn't work due to the use of nixpkgsSrc in androidenv. 
+  # See use it in `nix/overlay.nix`
+  #  pkgsOverlay = import ./overlay.nix { inherit nixpkgsSrc; };
+  pkgsOverlay = [
+    (self: super: {
+      androidPkgs = nixpkgsSrc.androidenv.composeAndroidPackages {
+        toolsVersion = "26.1.1";
+        platformToolsVersion = "33.0.3";
+        buildToolsVersions = [ "31.0.0" ];
+        platformVersions = [ "31" ];
+        cmakeVersions = [ "3.18.1" ];
+        ndkVersion = "22.1.7171670";
+        includeNDK = true;
+        includeExtras = [
+          "extras;android;m2repository"
+          "extras;google;m2repository"
+        ];
+      };
+    })
+  ];
 
 in
   # import nixpkgs with a config override
