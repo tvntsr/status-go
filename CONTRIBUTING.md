@@ -21,7 +21,7 @@ Thank you for considering contributing to our project! We appreciate your time a
 1. Pick an [issue](https://github.com/status-im/status-go/issues) to work on and drop a line there that you're working on that.
 2. Wait for approval from one of the core contributors.
 3. Fork the project and work right in the `develop` branch.
-4. Work on the issue and file a PR back into `develop`.
+4. Work on the issue and file a PR back into `develop`. Make sure the PR is assigned to yourself.
 5. Wait until your PR is [reviewed](https://hackmd.io/s/B1AenvFU-) by 2 core developers and merged.
 
 ## Code Style
@@ -38,17 +38,19 @@ Please note that we follow [Effective Go](https://golang.org/doc/effective_go.ht
 
 ### Test Validation
 
-Every Pull Request (PR) should include tests to validate its correctness and to test the features implemented. Preferably, use Behavior-Driven Development (BDD) principles for writing tests.
+Every Pull Request (PR) should include tests to validate its correctness and to test the features implemented. Preferably, use [Behavior-Driven Development (BDD)](https://en.wikipedia.org/wiki/Behavior-driven_development) principles for writing tests.
 
 ### Area of Impact
 
 PRs should be well described, and the description should clearly specify the area of impact. This helps reviewers and maintainers understand the changes being made.
+Please request manual QA if the PR is high-risk or it's large impact.
 
 ## Pull Request Description
 
 ### Feature Flags
 
 For PRs introducing new features, especially those in high-risk areas, consider using feature flags. Feature flags allow features to be toggled on or off, providing a way to deploy code changes to production while controlling the visibility of new features.
+For example, for messenger, you can use https://github.com/status-im/status-go/blob/develop/protocol/common/feature_flags.go.
 
 ### Removing Feature Flags
 
