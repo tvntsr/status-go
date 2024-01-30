@@ -51,7 +51,7 @@ func defaultSettings(generatedAccountInfo generator.GeneratedAccountInfo, derive
 	s := &settings.Settings{}
 	s.Mnemonic = &generatedAccountInfo.Mnemonic
 	s.BackupEnabled = true
-	logLevel := "INFO"
+	logLevel := "DEBUG"
 	s.LogLevel = &logLevel
 	s.ProfilePicturesShowTo = settings.ProfilePicturesShowToEveryone
 	s.ProfilePicturesVisibility = settings.ProfilePicturesVisibilityEveryone

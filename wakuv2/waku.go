@@ -1162,6 +1162,7 @@ func (w *Waku) Query(ctx context.Context, peerID peer.ID, pubsubTopic string, to
 		w.logger.Info("received waku2 store message",
 			zap.Any("envelopeHash", hexutil.Encode(envelope.Hash())),
 			zap.String("pubsubTopic", pubsubTopic),
+			zap.String("contentTopic", msg.ContentTopic),
 			zap.Int64p("timestamp", envelope.Message().Timestamp),
 		)
 
