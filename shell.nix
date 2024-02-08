@@ -6,4 +6,4 @@ let
   main = import ./nix { inherit config; };
 in
   # use the default shell when calling nix-shell without arguments
-  main.shells.default
+  main.shells

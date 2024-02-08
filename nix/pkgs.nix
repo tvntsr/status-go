@@ -43,5 +43,5 @@ in
   # import nixpkgs with a config override
   (import nixpkgsSrc) {
     config = defaultConfig // config;
-    overlays = [ pkgsOverlay ];
+    overlays =  pkgsOverlay;
   }

@@ -4,8 +4,6 @@
 let
   inherit (pkgs) lib stdenv;
 
-
-
   /* No Android SDK for Darwin aarch64. */
   isMacM1 = stdenv.isDarwin && stdenv.isAarch64;
   /* Lock requires Xcode verison. */

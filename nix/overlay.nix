@@ -4,10 +4,9 @@
 # For more details see:
 # - https://nixos.wiki/wiki/Overlays
 # - https://nixos.org/nixos/nix-pills/callpackage-design-pattern.html
-
-{ pkgs }:
+self: super:
 let
-  
+  inherit (super);  
 in {
   /* FIXME not sure for the pkgs*/
   androidPkgs = pkgs.androidenv.composeAndroidPackages {
