@@ -4,12 +4,10 @@
 # For more details see:
 # - https://nixos.wiki/wiki/Overlays
 # - https://nixos.org/nixos/nix-pills/callpackage-design-pattern.html
-self: super:
-let
-  inherit (super);  
-in {
+prev: final:
+{
   /* FIXME not sure for the pkgs*/
-  androidPkgs = pkgs.androidenv.composeAndroidPackages {
+  androidPkgs = prev.androidenv.composeAndroidPackages {
     toolsVersion = "26.1.1";
     platformToolsVersion = "33.0.3";
     buildToolsVersions = [ "31.0.0" ];
