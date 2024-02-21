@@ -5,8 +5,10 @@
 # - https://nixos.wiki/wiki/Overlays
 # - https://nixos.org/nixos/nix-pills/callpackage-design-pattern.html
 prev: final:
+let 
+  inherit (prev);
+in 
 {
-  /* FIXME not sure for the pkgs*/
   androidPkgs = prev.androidenv.composeAndroidPackages {
     toolsVersion = "26.1.1";
     platformToolsVersion = "33.0.3";
@@ -20,4 +22,15 @@ prev: final:
       "extras;google;m2repository"
     ];
   };
+  # FIXME infinite recursion encountered
+  #go-junit-report = prev.go-junit-report.overrideAttrs ( attrs : rec {
+  #  version = "2.1.0";
+
+  #  src = prev.fetchFromGitHub {
+  #   owner = "jstemmer";
+  #   repo = "go-junit-report";
+  #   rev = "v${version}";
+  #   sha256 = "sha256-s4XVjACmpd10C5k+P3vtcS/aWxI6UkSUPyxzLhD2vRI=";
+  #  };
+  #});
 }
