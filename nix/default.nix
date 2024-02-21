@@ -4,7 +4,7 @@
 }:
  let
   # put all main targets and shells together for easy import
-  shells = pkgs.callPackage ./shell.nix { };
+  shells = pkgs.callPackage ./shells.nix { };
 in {
   inherit pkgs shells;
 }

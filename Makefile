@@ -85,6 +85,47 @@ GO_CMD_PATHS := $(filter-out library, $(wildcard cmd/*))
 GO_CMD_NAMES := $(notdir $(GO_CMD_PATHS))
 GO_CMD_BUILDS := $(addprefix build/bin/, $(GO_CMD_NAMES))
 
+
+
+# Our custom config is located in nix/nix.conf
+export NIX_USER_CONF_FILES = $(PWD)/nix/nix.conf
+# Location of symlinks to derivations that should not be garbage collected
+export _NIX_GCROOTS = /nix/var/nix/gcroots/per-user/$(USER)/status-go
+
+
+# MacOS root is read-only, read nix/README.md for details
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+export NIX_IGNORE_SYMLINK_STORE=1
+endif
+#----------------
+# Nix targets
+#----------------
+
+
+SHELL := ./nix/scripts/shell.sh
+
+shell: export TARGET ?= default
+shell: ##@prepare Enter into a pre-configured shell
+ifndef IN_NIX_SHELL
+	@ENTER_NIX_SHELL
+else
+	@echo "${YELLOW}Nix shell is already active$(RESET)"
+endif
+
+nix-repl: SHELL := /bin/sh
+nix-repl: ##@nix Start an interactive Nix REPL
+	nix repl default.nix
+
+nix-gc-protected: SHELL := /bin/sh
+nix-gc-protected:
+	@echo -e "$(YELLOW)The following paths are protected:$(RESET)" && \
+	ls -1 $(_NIX_GCROOTS) | sed 's/^/ - /'
+
+
+#----------------
+# General targets
+#----------------
 all: $(GO_CMD_NAMES)
 
 .PHONY: $(GO_CMD_NAMES) $(GO_CMD_PATHS) $(GO_CMD_BUILDS)
