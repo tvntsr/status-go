@@ -35,7 +35,7 @@ make shell TARGET=android
 
 This way your shell and all other nix commands should run in a setup that is tailored towards Android development.
 
-For valid values you can check the [`nix/shells.nix`](/nix/shells.nix) file.
+For valid values you can check the [`nix/shell.nix`](/nix/shell.nix) file.
 
 :warning: __WARNING__: To have Nix pick up all changes a new `nix-shell` needs to be spawned.
 

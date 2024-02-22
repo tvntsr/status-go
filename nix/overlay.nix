@@ -9,10 +9,6 @@ let
   inherit (prev);
 in 
 {
-  lib = (final.lib or { }) // (import ./lib {
-    inherit (final) lib;
-  });
-
   androidPkgs = prev.androidenv.composeAndroidPackages {
     toolsVersion = "26.1.1";
     platformToolsVersion = "33.0.3";
