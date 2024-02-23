@@ -93,11 +93,6 @@ export NIX_USER_CONF_FILES = $(PWD)/nix/nix.conf
 export _NIX_GCROOTS = /nix/var/nix/gcroots/per-user/$(USER)/status-go
 
 
-# MacOS root is read-only, read nix/README.md for details
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-export NIX_IGNORE_SYMLINK_STORE=1
-endif
 #----------------
 # Nix targets
 #----------------
