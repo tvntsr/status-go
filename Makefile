@@ -118,6 +118,20 @@ nix-gc-protected:
 	ls -1 $(_NIX_GCROOTS) | sed 's/^/ - /'
 
 
+nix-upgrade: SHELL := /bin/sh
+nix-upgrade: ##@nix Upgrade Nix interpreter to current version.
+	nix/scripts/upgrade.sh
+
+nix-gc: nix-gc-protected ##@nix Garbage collect all packages older than 20 days from /nix/store
+	nix-store --gc
+
+nix-clean: ##@nix Remove all status-mobile build artifacts from /nix/store
+	nix/scripts/clean.sh
+
+nix-purge: SHELL := /bin/sh
+nix-purge: ##@nix Completely remove Nix setup, including /nix directory
+	nix/scripts/purge.sh
+
 #----------------
 # General targets
 #----------------
