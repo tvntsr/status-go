@@ -65,7 +65,7 @@ nixOpts=(
 
 # Run the actual build
 echo -e "${GRN}Running:${RST} ${BLD}nix-build "${nixOpts[@]}" ${@}${RST}"
-nixResultPath=$(nix-build "${nixOpts[@]}" "${@}" default.nix)
+nixResultPath=$(nix-build "${nixOpts[@]}" "${@}" shell.nix)
 
 echo -e "\n${YLW}Extracting result${RST}: ${BLD}${nixResultPath}${RST}"
 

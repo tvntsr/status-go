@@ -100,7 +100,6 @@ export _NIX_GCROOTS = /nix/var/nix/gcroots/per-user/$(USER)/status-go
 
 SHELL := ./nix/scripts/shell.sh
 
-shell: export TARGET ?= default
 shell: ##@prepare Enter into a pre-configured shell
 ifndef IN_NIX_SHELL
 	@ENTER_NIX_SHELL
@@ -110,7 +109,7 @@ endif
 
 nix-repl: SHELL := /bin/sh
 nix-repl: ##@nix Start an interactive Nix REPL
-	nix repl default.nix
+	nix repl shell.nix
 
 nix-gc-protected: SHELL := /bin/sh
 nix-gc-protected:

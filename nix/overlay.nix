@@ -19,7 +19,6 @@ final: prev:
       "extras;google;m2repository"
     ];
   };
-  # FIXME infinite recursion encountered
   go-junit-report = prev.go-junit-report.overrideAttrs ( attrs : rec {
     version = "2.1.0";
     src = prev.fetchFromGitHub {
