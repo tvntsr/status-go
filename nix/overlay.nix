@@ -5,7 +5,9 @@
 # - https://nixos.wiki/wiki/Overlays
 # - https://nixos.org/nixos/nix-pills/callpackage-design-pattern.html
 final: prev:
-{
+let
+  inherit (prev) callPackage;
+in {
   androidPkgs = prev.androidenv.composeAndroidPackages {
     toolsVersion = "26.1.1";
     platformToolsVersion = "33.0.3";
@@ -28,4 +30,6 @@ final: prev:
      sha256 = "sha256-s4XVjACmpd10C5k+P3vtcS/aWxI6UkSUPyxzLhD2vRI=";
     };
   });
+  # Custom packages
+  go-modvendor = callPackage ./pkgs/go-modvendor { };
 }
