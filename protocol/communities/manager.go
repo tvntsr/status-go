@@ -32,6 +32,7 @@ import (
 	"github.com/status-im/status-go/eth-node/crypto"
 	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/images"
+	multiaccountscommon "github.com/status-im/status-go/multiaccounts/common"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/protocol/common"
 	"github.com/status-im/status-go/protocol/common/shard"
@@ -2212,11 +2213,12 @@ func (m *Manager) handleCommunityEventRequestAccepted(community *Community, comm
 	request := communityEvent.RequestToJoin
 
 	requestToJoin := &RequestToJoin{
-		PublicKey:   signer,
-		Clock:       request.Clock,
-		ENSName:     request.EnsName,
-		CommunityID: request.CommunityId,
-		State:       RequestToJoinStateAcceptedPending,
+		PublicKey:          signer,
+		Clock:              request.Clock,
+		ENSName:            request.EnsName,
+		CommunityID:        request.CommunityId,
+		State:              RequestToJoinStateAcceptedPending,
+		CustomizationColor: multiaccountscommon.IDToColorFallbackToBlue(request.CustomizationColor),
 	}
 	requestToJoin.CalculateID()
 
@@ -2262,11 +2264,12 @@ func (m *Manager) handleCommunityEventRequestRejected(community *Community, comm
 	request := communityEvent.RequestToJoin
 
 	requestToJoin := &RequestToJoin{
-		PublicKey:   signer,
-		Clock:       request.Clock,
-		ENSName:     request.EnsName,
-		CommunityID: request.CommunityId,
-		State:       RequestToJoinStateDeclinedPending,
+		PublicKey:          signer,
+		Clock:              request.Clock,
+		ENSName:            request.EnsName,
+		CommunityID:        request.CommunityId,
+		State:              RequestToJoinStateDeclinedPending,
+		CustomizationColor: multiaccountscommon.IDToColorFallbackToBlue(request.CustomizationColor),
 	}
 	requestToJoin.CalculateID()
 
@@ -2652,12 +2655,13 @@ func (m *Manager) HandleCommunityRequestToJoin(signer *ecdsa.PublicKey, receiver
 	}
 
 	requestToJoin := &RequestToJoin{
-		PublicKey:        common.PubkeyToHex(signer),
-		Clock:            request.Clock,
-		ENSName:          request.EnsName,
-		CommunityID:      request.CommunityId,
-		State:            RequestToJoinStatePending,
-		RevealedAccounts: request.RevealedAccounts,
+		PublicKey:          common.PubkeyToHex(signer),
+		Clock:              request.Clock,
+		ENSName:            request.EnsName,
+		CommunityID:        request.CommunityId,
+		State:              RequestToJoinStatePending,
+		RevealedAccounts:   request.RevealedAccounts,
+		CustomizationColor: multiaccountscommon.IDToColorFallbackToBlue(request.CustomizationColor),
 	}
 	requestToJoin.CalculateID()
 
@@ -3486,16 +3490,17 @@ func (m *Manager) SaveRequestToJoinAndCommunity(requestToJoin *RequestToJoin, co
 	return community, requestToJoin, nil
 }
 
-func (m *Manager) CreateRequestToJoin(request *requests.RequestToJoinCommunity) *RequestToJoin {
+func (m *Manager) CreateRequestToJoin(request *requests.RequestToJoinCommunity, customizationColor multiaccountscommon.CustomizationColor) *RequestToJoin {
 	clock := uint64(time.Now().Unix())
 	requestToJoin := &RequestToJoin{
-		PublicKey:        common.PubkeyToHex(&m.identity.PublicKey),
-		Clock:            clock,
-		ENSName:          request.ENSName,
-		CommunityID:      request.CommunityID,
-		State:            RequestToJoinStatePending,
-		Our:              true,
-		RevealedAccounts: make([]*protobuf.RevealedAccount, 0),
+		PublicKey:          common.PubkeyToHex(&m.identity.PublicKey),
+		Clock:              clock,
+		ENSName:            request.ENSName,
+		CommunityID:        request.CommunityID,
+		State:              RequestToJoinStatePending,
+		Our:                true,
+		RevealedAccounts:   make([]*protobuf.RevealedAccount, 0),
+		CustomizationColor: customizationColor,
 	}
 
 	requestToJoin.CalculateID()
