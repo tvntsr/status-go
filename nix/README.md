@@ -6,20 +6,6 @@ This folder contains configuration for [Nix](https://nixos.org/), a purely funct
 
 The main config file is [`nix/nix.conf`](/nix/nix.conf) and its main purpose is defining the [binary caches](https://nixos.org/nix/manual/#ch-basic-package-mgmt) which allow download of packages to avoid having to compile them yourself locally.
 
-## Build arguments
-
-We leverage the environment variables for parameterization of the builds (e.g. to pass a build number or build type).
-
-Here is the list of variables you can use to override defaults:
-```shell
-# Build type (influences which .env file gets used for feature flags)
-export BUILD_TYPE="pr"
-export STATUS_GO_IPFS_GATEWAY_URL="https://ipfs.status.im/"
-```
-You can see the defaults in code:
-- [`nix/status-go/default.nix`](./status-go/default.nix)
-
-<!-- TODO confirm / update-->
 
 ## Shell
 
@@ -27,27 +13,7 @@ In order to access an interactive Nix shell a user should run `make shell`.
 
 The Nix shell is started in this repo via the [`nix/scripts/shell.sh`](/nix/scripts/shell.sh) script, which is a wrapper around the `nix-shell` command and is intended for use with our main [`Makefile`](/Makefile). This allows for an implicit use of `nix-shell` as the default shell in the `Makefile`.
 
-Normally the shell starts without any specific target platform, if you want to change that you should export the `TARGET` env variable with appropriate value:
-
-```bash
-make shell TARGET=android
-```
-
-This way your shell and all other nix commands should run in a setup that is tailored towards Android development.
-
-For valid values you can check the [`nix/shell.nix`](/nix/shell.nix) file.
-
 :warning: __WARNING__: To have Nix pick up all changes a new `nix-shell` needs to be spawned.
-
-## Using a local status-go repository
-
-If you need to use a locally checked-out status-go repository, you can achieve that by defining the `STATUS_GO_SRC_OVERRIDE`
-environment variable:
-
-```sh
-export STATUS_GO_SRC_OVERRIDE=$GOPATH/src/github.com/status-im/status-go
-make release-android
-```
 
 ## Resources
 
