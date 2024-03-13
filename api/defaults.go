@@ -199,6 +199,9 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 
 	if request.LogLevel != nil {
 		nodeConfig.LogLevel = *request.LogLevel
+		nodeConfig.LogEnabled = true
+	} else {
+		nodeConfig.LogEnabled = false
 	}
 
 	if request.UpstreamConfig != "" {
@@ -260,14 +263,6 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 
 	if request.VerifyENSContractAddress != nil {
 		nodeConfig.ShhextConfig.VerifyENSContractAddress = *request.VerifyENSContractAddress
-	}
-
-	if request.LogLevel != nil {
-		nodeConfig.LogLevel = *request.LogLevel
-		nodeConfig.LogEnabled = true
-
-	} else {
-		nodeConfig.LogEnabled = false
 	}
 
 	nodeConfig.Networks = BuildDefaultNetworks(request)
