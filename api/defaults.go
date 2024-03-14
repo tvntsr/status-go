@@ -189,7 +189,6 @@ func buildWalletConfig(request *requests.WalletSecretsConfig) params.WalletConfi
 func defaultNodeConfig(installationID string, request *requests.CreateAccount) (*params.NodeConfig, error) {
 	// Set mainnet
 	nodeConfig := &params.NodeConfig{}
-	nodeConfig.NetworkID = request.NetworkID
 	nodeConfig.LogEnabled = request.LogEnabled
 	nodeConfig.LogFile = "geth.log"
 	nodeConfig.LogDir = request.LogFilePath
@@ -204,11 +203,17 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 		nodeConfig.LogEnabled = false
 	}
 
+	nodeConfig.Networks = BuildDefaultNetworks(request)
+	nodeConfig.NetworkID = nodeConfig.Networks[0].ChainID
+
 	if request.UpstreamConfig != "" {
 		nodeConfig.UpstreamConfig = params.UpstreamRPCConfig{
 			Enabled: true,
 			URL:     request.UpstreamConfig,
 		}
+	} else {
+		nodeConfig.UpstreamConfig.URL = defaultNetworks[0].RPCURL
+		nodeConfig.UpstreamConfig.Enabled = true
 	}
 
 	nodeConfig.Name = "StatusIM"
@@ -265,7 +270,23 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 		nodeConfig.ShhextConfig.VerifyENSContractAddress = *request.VerifyENSContractAddress
 	}
 
+	if request.LogLevel != nil {
+		nodeConfig.LogLevel = *request.LogLevel
+		nodeConfig.LogEnabled = true
+
+	} else {
+		nodeConfig.LogEnabled = false
+	}
+
+	if request.NetworkID != nil {
+		nodeConfig.NetworkID = *request.NetworkID
+	}
 	nodeConfig.Networks = BuildDefaultNetworks(request)
+
+	//config.NetworkID = defaultNetworks[0].ChainID
+
+	config.ShhextConfig.VerifyENSURL = defaultNetworks[0].FallbackURL
+	config.ShhextConfig.VerifyTransactionURL = defaultNetworks[0].FallbackURL
 
 	return nodeConfig, nil
 }
