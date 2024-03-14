@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/status-im/status-go/contracts"
+	gaspriceoracle "github.com/status-im/status-go/contracts/gas-price-oracle"
 	"github.com/status-im/status-go/contracts/ierc20"
 	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/params"
@@ -194,6 +195,7 @@ type Path struct {
 	AmountInLocked          bool
 	AmountOut               *hexutil.Big
 	GasAmount               uint64
+	L1GasAmount             uint64
 	GasFees                 *SuggestedFees
 	BonderFees              *hexutil.Big
 	TokenFees               *big.Float
@@ -547,6 +549,48 @@ func (r *Router) getERC1155Balance(ctx context.Context, network *params.Network,
 	return balances[0].Int, nil
 }
 
+func (r *Router) getL1Fee(ctx context.Context, network *params.Network, fromAddress common.Address, toAddress common.Address, amountIn *big.Int) (uint64, error) {
+	toAddr := types.Address(toAddress)
+	tx, err := r.s.transactor.ValidateAndBuildTransaction(network.ChainID, transactions.SendTxArgs{
+		From:  types.Address(fromAddress),
+		To:    &toAddr,
+		Value: (*hexutil.Big)(amountIn),
+		Data:  types.HexBytes("0x0"),
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	client, err := r.s.rpcClient.EthClient(network.ChainID)
+	if err != nil {
+		return 0, err
+	}
+
+	contractAddress, err := gaspriceoracle.ContractAddress(network.ChainID)
+	if err != nil {
+		return 0, err
+	}
+
+	contract, err := gaspriceoracle.NewGaspriceoracleCaller(contractAddress, client)
+	if err != nil {
+		return 0, err
+	}
+
+	callOpt := &bind.CallOpts{}
+
+	data, err := tx.MarshalBinary()
+	if err != nil {
+		return 0, err
+	}
+
+	result, err := contract.GetL1Fee(callOpt, data)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.Uint64(), nil
+}
+
 func (r *Router) suggestedRoutes(
 	ctx context.Context,
 	sendType SendType,
@@ -601,6 +645,11 @@ func (r *Router) suggestedRoutes(
 		nativeToken := r.s.tokenManager.FindToken(network, network.NativeCurrencySymbol)
 		if nativeToken == nil {
 			continue
+		}
+
+		l1Fee, err := r.getL1Fee(ctx, network, addrTo, addrFrom, amountIn)
+		if err != nil && err != gaspriceoracle.ErrorNotAvailableOnChainID {
+			return nil, err
 		}
 
 		group.Add(func(c context.Context) error {
@@ -692,31 +741,36 @@ func (r *Router) suggestedRoutes(
 						gasLimit = sendType.EstimateGas(r.s, network, addrFrom, tokenID)
 					}
 
-					requiredNativeBalance := new(big.Int).Mul(gweiToWei(maxFees), big.NewInt(int64(gasLimit)))
-					// Removed the required fees from maxAMount in case of native token tx
-					if token.IsNative() {
-						maxAmountIn = (*hexutil.Big)(new(big.Int).Sub(maxAmountIn.ToInt(), requiredNativeBalance))
-					}
-					if nativeBalance.Cmp(requiredNativeBalance) <= 0 {
-						continue
-					}
 					approvalRequired, approvalAmountRequired, approvalGasLimit, approvalContractAddress, err := r.requireApproval(ctx, sendType, bridge, addrFrom, network, token, amountIn)
 					if err != nil {
 						continue
 					}
+
+					requiredNativeBalance := new(big.Int).Mul(gweiToWei(maxFees), big.NewInt(int64(gasLimit)))
+					requiredNativeBalance.Add(requiredNativeBalance, new(big.Int).Mul(gweiToWei(maxFees), big.NewInt(int64(approvalGasLimit))))
+					requiredNativeBalance.Add(requiredNativeBalance, big.NewInt(int64(l1Fee))) // add l1Fee to requiredNativeBalance, in case of L1 chain l1Fee is 0
+
+					if nativeBalance.Cmp(requiredNativeBalance) <= 0 {
+						continue
+					}
+
+					// Removed the required fees from maxAMount in case of native token tx
+					if token.IsNative() {
+						maxAmountIn = (*hexutil.Big)(new(big.Int).Sub(maxAmountIn.ToInt(), requiredNativeBalance))
+					}
+
+					ethPrice := big.NewFloat(prices["ETH"])
+
 					approvalGasFees := new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(approvalGasLimit))))
 
 					approvalGasCost := new(big.Float)
-					approvalGasCost.Mul(
-						approvalGasFees,
-						big.NewFloat(prices["ETH"]),
-					)
+					approvalGasCost.Mul(approvalGasFees, ethPrice)
+
+					l1GasCost := new(big.Float)
+					l1GasCost.Mul(big.NewFloat((float64(l1Fee))), ethPrice)
 
 					gasCost := new(big.Float)
-					gasCost.Mul(
-						new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(gasLimit)))),
-						big.NewFloat(prices["ETH"]),
-					)
+					gasCost.Mul(new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(gasLimit)))), ethPrice)
 
 					tokenFeesAsFloat := new(big.Float).Quo(
 						new(big.Float).SetInt(tokenFees),
@@ -728,6 +782,7 @@ func (r *Router) suggestedRoutes(
 					cost := new(big.Float)
 					cost.Add(tokenCost, gasCost)
 					cost.Add(cost, approvalGasCost)
+					cost.Add(cost, l1GasCost)
 					mu.Lock()
 					candidates = append(candidates, &Path{
 						BridgeName:              bridge.Name(),
@@ -737,6 +792,7 @@ func (r *Router) suggestedRoutes(
 						AmountIn:                (*hexutil.Big)(zero),
 						AmountOut:               (*hexutil.Big)(zero),
 						GasAmount:               gasLimit,
+						L1GasAmount:             l1Fee,
 						GasFees:                 gasFees,
 						BonderFees:              (*hexutil.Big)(bonderFees),
 						TokenFees:               tokenFeesAsFloat,

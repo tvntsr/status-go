@@ -250,7 +250,7 @@ func (t *Transactor) BuildTransactionWithSignature(chainID uint64, args SendTxAr
 		return nil, ErrInvalidSignatureSize
 	}
 
-	tx := t.buildTransaction(args)
+	tx := t.BuildTransaction(args)
 	expectedNonce, err := t.NextNonce(t.rpcWrapper.RPCClient, chainID, args.From)
 	if err != nil {
 		return nil, err
@@ -348,7 +348,7 @@ func (t *Transactor) HashTransaction(args SendTxArgs) (validatedArgs SendTxArgs,
 	}
 	validatedArgs.Gas = &newGas
 
-	tx := t.buildTransaction(validatedArgs)
+	tx := t.BuildTransaction(validatedArgs)
 	hash = types.Hash(gethtypes.NewLondonSigner(chainID).Hash(tx))
 
 	return validatedArgs, hash, nil
@@ -448,7 +448,7 @@ func (t *Transactor) validateAndPropagate(rpcWrapper *rpcWrapper, selectedAccoun
 	return t.sendTransaction(rpcWrapper, common.Address(args.From), args.Symbol, args.MultiTransactionID, signedTx)
 }
 
-func (t *Transactor) buildTransaction(args SendTxArgs) *gethtypes.Transaction {
+func (t *Transactor) BuildTransaction(args SendTxArgs) *gethtypes.Transaction {
 	var (
 		nonce    uint64
 		value    *big.Int
