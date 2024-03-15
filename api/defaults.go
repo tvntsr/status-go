@@ -204,7 +204,12 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 	}
 
 	nodeConfig.Networks = BuildDefaultNetworks(request)
-	nodeConfig.NetworkID = nodeConfig.Networks[0].ChainID
+
+	if request.NetworkID != nil {
+		nodeConfig.NetworkID = *request.NetworkID
+	} else {
+		nodeConfig.NetworkID = nodeConfig.Networks[0].ChainID
+	}
 
 	if request.UpstreamConfig != "" {
 		nodeConfig.UpstreamConfig = params.UpstreamRPCConfig{
@@ -256,10 +261,14 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 
 	if request.VerifyTransactionURL != nil {
 		nodeConfig.ShhextConfig.VerifyTransactionURL = *request.VerifyTransactionURL
+	} else {
+		nodeConfig.ShhextConfig.VerifyTransactionURL = defaultNetworks[0].FallbackURL
 	}
 
 	if request.VerifyENSURL != nil {
 		nodeConfig.ShhextConfig.VerifyENSURL = *request.VerifyENSURL
+	} else {
+		nodeConfig.ShhextConfig.VerifyENSURL = defaultNetworks[0].FallbackURL
 	}
 
 	if request.VerifyTransactionChainID != nil {
@@ -281,12 +290,6 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 	if request.NetworkID != nil {
 		nodeConfig.NetworkID = *request.NetworkID
 	}
-	nodeConfig.Networks = BuildDefaultNetworks(request)
-
-	//config.NetworkID = defaultNetworks[0].ChainID
-
-	config.ShhextConfig.VerifyENSURL = defaultNetworks[0].FallbackURL
-	config.ShhextConfig.VerifyTransactionURL = defaultNetworks[0].FallbackURL
 
 	return nodeConfig, nil
 }

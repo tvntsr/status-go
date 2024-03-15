@@ -36,7 +36,7 @@ type CreateAccount struct {
 	VerifyTransactionChainID *int64  `json:"verifyTransactionChainID"`
 	UpstreamConfig           string  `json:"upstreamConfig"`
 
-	// Deprecated: CurrentNetwork is deprecated, use NetworkID instead
+	// Deprecated: CurrentNetwork is deprecated
 	CurrentNetwork string  `json:"currentNetwork"`
 	NetworkID      *uint64 `json:"networkId"`
 
@@ -86,10 +86,6 @@ func ValidateAccountCreationRequest(c CreateAccount) error {
 		return ErrCreateAccountInvalidBackupDisabledDataDir
 	}
 
-	if len(c.LogFilePath) == 0 {
-		return ErrCreateAccountInvalidLogFilePath
-	}
-	
 	return nil
 
 }
