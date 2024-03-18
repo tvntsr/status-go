@@ -100,6 +100,7 @@ export _NIX_GCROOTS = /nix/var/nix/gcroots/per-user/$(USER)/status-go
 
 SHELL := ./nix/scripts/shell.sh
 
+shell: export TARGET ?= default
 shell: ##@prepare Enter into a pre-configured shell
 ifndef IN_NIX_SHELL
 	@ENTER_NIX_SHELL
