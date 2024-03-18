@@ -90,7 +90,7 @@ GO_CMD_BUILDS := $(addprefix build/bin/, $(GO_CMD_NAMES))
 # Our custom config is located in nix/nix.conf
 export NIX_USER_CONF_FILES = $(PWD)/nix/nix.conf
 # Location of symlinks to derivations that should not be garbage collected
-export _NIX_GCROOTS = /nix/var/nix/gcroots/per-user/$(USER)/status-go
+export _NIX_GCROOTS = ./.nix-gcroots
 
 
 #----------------
