@@ -14,6 +14,11 @@ source "${GIT_ROOT}/nix/scripts/source.sh"
 export TERM=xterm # fix for colors
 shift # we remove the first -c from arguments
 
+if [[ -z "${TARGET}" ]]; then
+    export TARGET="default"
+    echo -e "${YLW}Missing TARGET, assuming default target.${RST} See nix/README.md for more details." 1>&2
+fi
+
 # Minimal shell with just Nix sourced, useful for `make nix-gc`.
 if [[ "${TARGET}" == "nix" ]]; then
     eval $@
@@ -30,9 +35,10 @@ if [[ -n "${IN_NIX_SHELL}" ]] && [[ -n "${NIX_SHELL_TARGET}" ]]; then
     fi
 fi
 
-entryPoint="shell.nix"
+entryPoint="default.nix"
 nixArgs=(
     "--show-trace"
+    "--attr shells.${TARGET}"
 )
 
 # This variable allows specifying which env vars to keep for Nix pure shell
@@ -47,10 +53,16 @@ if [[ -n "${_NIX_PURE}" ]]; then
     pureDesc='pure '
 fi
 
-echo -e "${GRN}Configuring ${pureDesc}Nix shell for target ...${RST}" 1>&2
+# Hack fix for missing Android SDK for aarch64 on Darwin. See systemOverride in `nix/pkgs.nix`.
+if [[ "${TARGET}" =~ ^(android-sdk|android|gradle|keytool|status-go)$ ]]; then
+    os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    export NIXPKGS_SYSTEM_OVERRIDE="x86_64-${os}"
+fi
+
+echo -e "${GRN}Configuring ${pureDesc}Nix shell for target '${TARGET}'...${RST}" 1>&2
 
 # Save derivation from being garbage collected
-"${GIT_ROOT}/nix/scripts/gcroots.sh" "shell"
+"${GIT_ROOT}/nix/scripts/gcroots.sh" "shells.${TARGET}"
 
 # ENTER_NIX_SHELL is the fake command used when `make shell` is run.
 # It is just a special string, not a variable, and a marker to not use `--run`.
