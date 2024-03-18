@@ -283,7 +283,7 @@ endif
 	docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_CUSTOM_TAG)
 
 setup: ##@setup Install all tools
-setup: setup-check setup-build setup-dev tidy
+setup: setup-check setup-dev tidy
 
 setup-check: ##@setup Check if Go compiler is installed.
 ifeq (, $(shell which go))
@@ -291,41 +291,10 @@ ifeq (, $(shell which go))
 endif
 
 setup-dev: ##@setup Install all necessary tools for development
-setup-dev: install-lint install-mock install-modvendor install-protobuf tidy install-os-deps
-
-setup-build: ##@setup Install all necessary build tools
-setup-build: install-lint install-release install-gomobile install-junit-report
+setup-dev:  tidy install-os-deps
 
 install-os-deps: ##@install Operating System Dependencies
 	_assets/scripts/install_deps.sh
-
-install-gomobile: install-xtools
-install-gomobile: ##@install Go Mobile Build Tools
-	GO111MODULE=on  go install golang.org/x/mobile/cmd/...@5d9a3325
-	GO111MODULE=on  go mod download golang.org/x/exp@ec7cb31e
-	GO111MODULE=off go get -d golang.org/x/mobile/cmd/gobind
-
-install-lint: ##@install Install Linting Tools
-	GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
-
-install-junit-report: ##@install Install Junit Report Tool for Jenkins integration
-	GO111MODULE=on go install github.com/jstemmer/go-junit-report/v2@latest
-
-install-mock: ##@install Install Module Mocking Tools
-	GO111MODULE=on go install github.com/golang/mock/mockgen@v1.4.4
-
-install-modvendor: ##@install Install Module Vendoring Tool
-	GO111MODULE=on go install github.com/goware/modvendor@v0.5.0
-
-install-protobuf: ##@install Install Protobuf Generation Tools
-	GO111MODULE=on go install github.com/kevinburke/go-bindata/go-bindata@v3.13.0
-	GO111MODULE=on go install github.com/golang/protobuf/protoc-gen-go@v1.3.4
-
-install-release: ##@install Install Github Release Tools
-	GO111MODULE=on go install github.com/c4milo/github-release@v1.1.0
-
-install-xtools: ##@install Install Miscellaneous Go Tools
-	GO111MODULE=on go install golang.org/x/tools/go/packages/...@v0.1.5
 
 generate-handlers:
 	go generate ./_assets/generate_handlers/
