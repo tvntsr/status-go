@@ -12,6 +12,7 @@ var ErrCreateAccountInvalidBackupDisabledDataDir = errors.New("create-account: i
 
 type CreateAccount struct {
 	// BackupDisabledDataDir is the directory where backup is disabled
+	// WARNING: This is used as `RootDataDir`. Consider renaming?
 	BackupDisabledDataDir string `json:"backupDisabledDataDir"`
 
 	DeviceName         string `json:"deviceName"`
@@ -41,6 +42,9 @@ type CreateAccount struct {
 	NetworkID      *uint64 `json:"networkId"`
 
 	WalletSecretsConfig
+
+	TorrentConfigEnabled *bool
+	TorrentConfigPort    *int
 }
 
 type WalletSecretsConfig struct {

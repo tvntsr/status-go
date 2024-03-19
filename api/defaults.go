@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"math/big"
+	"path/filepath"
 
 	"github.com/google/uuid"
 
@@ -24,6 +25,13 @@ const shardsTestClusterID = 16
 const walletAccountDefaultName = "Account 1"
 const keystoreRelativePath = "keystore"
 const defaultKeycardPairingDataFile = "/ethereum/mainnet_rpc/keycard/pairings.json"
+
+const defaultArchivesRelativePath = "data/archivedata"
+const defaultTorrentTorrentsRelativePath = "data/torrents"
+
+var defautTorrentConfig = params.TorrentConfig{
+	Enabled: false,
+}
 
 var paths = []string{pathWalletRoot, pathEIP1581, pathDefaultChat, pathDefaultWallet}
 
@@ -289,6 +297,21 @@ func defaultNodeConfig(installationID string, request *requests.CreateAccount) (
 
 	if request.NetworkID != nil {
 		nodeConfig.NetworkID = *request.NetworkID
+	}
+
+	nodeConfig.TorrentConfig = params.TorrentConfig{
+		Enabled:    false,
+		Port:       0,
+		DataDir:    filepath.Join(nodeConfig.RootDataDir, defaultArchivesRelativePath),
+		TorrentDir: filepath.Join(nodeConfig.RootDataDir, defaultTorrentTorrentsRelativePath),
+	}
+
+	if request.TorrentConfigEnabled != nil {
+		nodeConfig.TorrentConfig.Enabled = *request.TorrentConfigEnabled
+
+	}
+	if request.TorrentConfigPort != nil {
+		nodeConfig.TorrentConfig.Port = *request.TorrentConfigPort
 	}
 
 	return nodeConfig, nil
