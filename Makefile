@@ -30,7 +30,7 @@ help: ##@other Show this help
 	@perl -e '$(HELP_FUN)' $(MAKEFILE_LIST)
 
 CGO_CFLAGS = -I/$(JAVA_HOME)/include -I/$(JAVA_HOME)/include/darwin
-GOPATH ?= $(HOME)/go
+export GOPATH ?= $(HOME)/go
 
 GIT_ROOT := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
@@ -92,14 +92,12 @@ export NIX_USER_CONF_FILES = $(PWD)/nix/nix.conf
 # Location of symlinks to derivations that should not be garbage collected
 export _NIX_GCROOTS = ./.nix-gcroots
 
-
 #----------------
 # Nix targets
 #----------------
 
 
 SHELL := ./nix/scripts/shell.sh
-
 shell: export TARGET ?= default
 shell: ##@prepare Enter into a pre-configured shell
 ifndef IN_NIX_SHELL
