@@ -1,18 +1,15 @@
 .PHONY: statusgo statusd-prune all test clean help
 .PHONY: statusgo-android statusgo-ios
 
-RELEASE_TAG := v$(shell cat VERSION)
-RELEASE_BRANCH := develop
+RELEASE_TAG := v$(SHELL=/bin/sh shell cat VERSION)
 RELEASE_DIR := /tmp/release-$(RELEASE_TAG)
-PRE_RELEASE := "1"
-RELEASE_TYPE := $(shell if [ $(PRE_RELEASE) = "0" ] ; then echo release; else echo pre-release ; fi)
 GOLANGCI_BINARY=golangci-lint
 IPFS_GATEWAY_URL ?= https://ipfs.status.im/
 
 ifeq ($(OS),Windows_NT)     # is Windows_NT on XP, 2000, 7, Vista, 10...
  detected_OS := Windows
 else
- detected_OS := $(strip $(shell uname))
+ detected_OS := $(strip $(SHELL=/bin/sh shell uname))
 endif
 
 ifeq ($(detected_OS),Darwin)
@@ -33,21 +30,25 @@ CGO_CFLAGS = -I/$(JAVA_HOME)/include -I/$(JAVA_HOME)/include/darwin
 export GOPATH ?= $(HOME)/go
 
 GIT_ROOT := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
-GIT_COMMIT = $(shell git rev-parse --short HEAD)
-GIT_AUTHOR ?= $(shell git config user.email || echo $$USER)
+GIT_COMMIT = $(SHELL=/bin/sh shell git rev-parse --short HEAD)
+GIT_AUTHOR ?= $(SHELL=/bin/sh shell git config user.email || echo $$USER)
 
 ENABLE_METRICS ?= true
 BUILD_TAGS ?= gowaku_no_rln
-BUILD_FLAGS ?= $(shell echo "-ldflags='\
+define BUILD_FLAGS ?=
+	-ldflags="\
 	-X github.com/status-im/status-go/params.Version=$(RELEASE_TAG:v%=%) \
 	-X github.com/status-im/status-go/params.GitCommit=$(GIT_COMMIT) \
 	-X github.com/status-im/status-go/params.IpfsGatewayURL=$(IPFS_GATEWAY_URL) \
-	-X github.com/status-im/status-go/vendor/github.com/ethereum/go-ethereum/metrics.EnabledStr=$(ENABLE_METRICS)'")
+	-X github.com/status-im/status-go/vendor/github.com/ethereum/go-ethereum/metrics.EnabledStr=$(ENABLE_METRICS)"
+endef
 
-BUILD_FLAGS_MOBILE ?= $(shell echo "-ldflags='\
+define BUILD_FLAGS_MOBILE ?=
+	-ldflags="\
 	-X github.com/status-im/status-go/params.Version=$(RELEASE_TAG:v%=%) \
 	-X github.com/status-im/status-go/params.GitCommit=$(GIT_COMMIT) \
-	-X github.com/status-im/status-go/params.IpfsGatewayURL=$(IPFS_GATEWAY_URL)'")
+	-X github.com/status-im/status-go/params.IpfsGatewayURL=$(IPFS_GATEWAY_URL)"
+endef
 
 networkid ?= StatusChain
 
@@ -64,10 +65,10 @@ DOCKER_TEST_IMAGE = golang:1.13
 # It supports ANSI colors and categories.
 # To add new item into help output, simply add comments
 # starting with '##'. To add category, use @category.
-GREEN  := $(shell echo "\e[32m")
-WHITE  := $(shell echo "\e[37m")
-YELLOW := $(shell echo "\e[33m")
-RESET  := $(shell echo "\e[0m")
+GREEN  := $(SHELL=/bin/sh shell echo "\e[32m")
+WHITE  := $(SHELL=/bin/sh shell echo "\e[37m")
+YELLOW := $(SHELL=/bin/sh shell echo "\e[33m")
+RESET  := $(SHELL=/bin/sh shell echo "\e[0m")
 HELP_FUN = \
 		   %help; \
 		   while(<>) { push @{$$help{$$2 // 'options'}}, [$$1, $$3] if /^([a-zA-Z0-9\-]+)\s*:.*\#\#(?:@([a-zA-Z\-]+))?\s(.*)$$/ }; \
@@ -260,12 +261,12 @@ push-docker-images: docker-image bootnode-image
 	docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_CUSTOM_TAG)
 
 clean-docker-images:
-	docker rmi -f $(shell docker image ls --filter="reference=$(DOCKER_IMAGE_NAME)" --quiet)
+	docker rmi -f $(SHELL=/bin/sh shell docker image ls --filter="reference=$(DOCKER_IMAGE_NAME)" --quiet)
 
 # See https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html to understand this magic.
-push-docker-images-latest: GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
-push-docker-images-latest: GIT_LOCAL  = $(shell git rev-parse @)
-push-docker-images-latest: GIT_REMOTE = $(shell git fetch -q && git rev-parse remotes/origin/develop || echo 'NO_DEVELOP')
+push-docker-images-latest: GIT_BRANCH = $(SHELL=/bin/sh shell git rev-parse --abbrev-ref HEAD)
+push-docker-images-latest: GIT_LOCAL  = $(SHELL=/bin/sh shell git rev-parse @)
+push-docker-images-latest: GIT_REMOTE = $(SHELL=/bin/sh shell git fetch -q && git rev-parse remotes/origin/develop || echo 'NO_DEVELOP')
 push-docker-images-latest: docker-image bootnode-image
 	@echo "Pushing latest docker images..."
 	@echo "Checking git branch..."
@@ -322,7 +323,7 @@ mock: ##@other Regenerate mocks
 	mockgen -package=peer         -destination=services/peer/discoverer_mock.go      -source=services/peer/service.go
 
 docker-test: ##@tests Run tests in a docker container with golang.
-	docker run --privileged --rm -it -v "$(shell pwd):$(DOCKER_TEST_WORKDIR)" -w "$(DOCKER_TEST_WORKDIR)" $(DOCKER_TEST_IMAGE) go test ${ARGS}
+	docker run --privileged --rm -it -v "$(PWD):$(DOCKER_TEST_WORKDIR)" -w "$(DOCKER_TEST_WORKDIR)" $(DOCKER_TEST_IMAGE) go test ${ARGS}
 
 test: test-unit ##@tests Run basic, short tests during development
 
@@ -331,7 +332,7 @@ test-unit: export UNIT_TEST_COUNT ?= 1
 test-unit: export UNIT_TEST_FAILFAST ?= true
 test-unit: export UNIT_TEST_RERUN_FAILS ?= true
 test-unit: export UNIT_TEST_USE_DEVELOPMENT_LOGGER ?= true
-test-unit: export UNIT_TEST_PACKAGES ?= $(shell go list ./... | \
+test-unit: export UNIT_TEST_PACKAGES ?= $(SHELL=/bin/sh shell go list ./... | \
 	grep -v /vendor | \
 	grep -v /t/e2e | \
 	grep -v /t/benchmarks | \
@@ -420,14 +421,14 @@ clean-mailserver-docker: ##@Easy Clean your Docker container running a mailserve
 
 migration: DEFAULT_MIGRATION_PATH := appdatabase/migrations/sql
 migration:
-	touch $(DEFAULT_MIGRATION_PATH)/$(shell date +%s)_$(D).up.sql
+	touch $(DEFAULT_MIGRATION_PATH)/$(SHELL=/bin/sh shell date +%s)_$(D).up.sql
 
 migration-check:
 	bash _assets/scripts/migration_check.sh
 
 migration-wallet: DEFAULT_WALLET_MIGRATION_PATH := walletdatabase/migrations/sql
 migration-wallet:
-	touch $(DEFAULT_WALLET_MIGRATION_PATH)/$(shell date +%s)_$(D).up.sql
+	touch $(DEFAULT_WALLET_MIGRATION_PATH)/$(SHELL=/bin/sh shell date +%s)_$(D).up.sql
 
 install-git-hooks:
 	@ln -sf $(if $(filter $(detected_OS), Linux),-r,) \
@@ -438,7 +439,7 @@ install-git-hooks:
 
 migration-protocol: DEFAULT_PROTOCOL_PATH := protocol/migrations/sqlite
 migration-protocol:
-	touch $(DEFAULT_PROTOCOL_PATH)/$(shell date +%s)_$(D).up.sql
+	touch $(DEFAULT_PROTOCOL_PATH)/$(SHELL=/bin/sh shell date +%s)_$(D).up.sql
 
 PROXY_WRAPPER_PATH = $(CURDIR)/vendor/github.com/siphiuel/lc-proxy-wrapper
 -include $(PROXY_WRAPPER_PATH)/Makefile.vars
