@@ -1,6 +1,31 @@
 .PHONY: statusgo statusd-prune all test clean help
 .PHONY: statusgo-android statusgo-ios
 
+# This is a code for automatic help generator.
+# It supports ANSI colors and categories.
+# To add new item into help output, simply add comments
+# starting with '##'. To add category, use @category.
+GREEN  := $(shell echo "\e[32m")
+WHITE  := $(shell echo "\e[37m")
+YELLOW := $(shell echo "\e[33m")
+RESET  := $(shell echo "\e[0m")
+HELP_FUN = \
+		   %help; \
+		   while(<>) { push @{$$help{$$2 // 'options'}}, [$$1, $$3] if /^([a-zA-Z0-9\-]+)\s*:.*\#\#(?:@([a-zA-Z\-]+))?\s(.*)$$/ }; \
+		   print "Usage: make [target]\n\n"; \
+		   for (sort keys %help) { \
+			   print "${WHITE}$$_:${RESET}\n"; \
+			   for (@{$$help{$$_}}) { \
+				   $$sep = " " x (32 - length $$_->[0]); \
+				   print "  ${YELLOW}$$_->[0]${RESET}$$sep${GREEN}$$_->[1]${RESET}\n"; \
+			   }; \
+			   print "\n"; \
+		   }
+
+help: SHELL := /bin/sh
+help: ##@other Show this help
+	@perl -e '$(HELP_FUN)' $(MAKEFILE_LIST)
+
 RELEASE_TAG := v$(SHELL=/bin/sh shell cat VERSION)
 RELEASE_DIR := /tmp/release-$(RELEASE_TAG)
 GOLANGCI_BINARY=golangci-lint
@@ -22,9 +47,6 @@ else
  GOBIN_SHARED_LIB_EXT := so
  GOBIN_SHARED_LIB_CGO_LDFLAGS := CGO_LDFLAGS="-Wl,-soname,libstatus.so.0"
 endif
-
-help: ##@other Show this help
-	@perl -e '$(HELP_FUN)' $(MAKEFILE_LIST)
 
 CGO_CFLAGS = -I/$(JAVA_HOME)/include -I/$(JAVA_HOME)/include/darwin
 export GOPATH ?= $(HOME)/go
@@ -60,27 +82,6 @@ DOCKER_IMAGE_CUSTOM_TAG ?= $(RELEASE_TAG)
 
 DOCKER_TEST_WORKDIR = /go/src/github.com/status-im/status-go/
 DOCKER_TEST_IMAGE = golang:1.13
-
-# This is a code for automatic help generator.
-# It supports ANSI colors and categories.
-# To add new item into help output, simply add comments
-# starting with '##'. To add category, use @category.
-GREEN  := $(SHELL=/bin/sh shell echo "\e[32m")
-WHITE  := $(SHELL=/bin/sh shell echo "\e[37m")
-YELLOW := $(SHELL=/bin/sh shell echo "\e[33m")
-RESET  := $(SHELL=/bin/sh shell echo "\e[0m")
-HELP_FUN = \
-		   %help; \
-		   while(<>) { push @{$$help{$$2 // 'options'}}, [$$1, $$3] if /^([a-zA-Z0-9\-]+)\s*:.*\#\#(?:@([a-zA-Z\-]+))?\s(.*)$$/ }; \
-		   print "Usage: make [target]\n\n"; \
-		   for (sort keys %help) { \
-			   print "${WHITE}$$_:${RESET}\n"; \
-			   for (@{$$help{$$_}}) { \
-				   $$sep = " " x (32 - length $$_->[0]); \
-				   print "  ${YELLOW}$$_->[0]${RESET}$$sep${GREEN}$$_->[1]${RESET}\n"; \
-			   }; \
-			   print "\n"; \
-		   }
 
 GO_CMD_PATHS := $(filter-out library, $(wildcard cmd/*))
 GO_CMD_NAMES := $(notdir $(GO_CMD_PATHS))
