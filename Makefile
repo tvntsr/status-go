@@ -235,36 +235,41 @@ endif
 	@echo "Shared library built:"
 	@ls -la build/bin/libstatus.*
 
+docker-image: SHELL := /bin/sh
 docker-image: BUILD_TARGET ?= statusd
 docker-image: ##@docker Build docker image (use DOCKER_IMAGE_NAME to set the image name)
 	@echo "Building docker image..."
 	docker build --file _assets/build/Dockerfile . \
-		--build-arg "build_tags=$(BUILD_TAGS)" \
-		--build-arg "build_flags=$(BUILD_FLAGS)" \
-		--build-arg "build_target=$(BUILD_TARGET)" \
-		--label "commit=$(GIT_COMMIT)" \
-		--label "author=$(GIT_AUTHOR)" \
+		--build-arg 'build_tags=$(BUILD_TAGS)' \
+		--build-arg 'build_flags=$(BUILD_FLAGS)' \
+		--build-arg 'build_target=$(BUILD_TARGET)' \
+		--label 'commit=$(GIT_COMMIT)' \
+		--label 'author=$(GIT_AUTHOR)' \
 		-t $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_CUSTOM_TAG) \
 		-t $(DOCKER_IMAGE_NAME):latest
 
+bootnode-image: SHELL := /bin/sh
 bootnode-image:
 	@echo "Building docker image for bootnode..."
 	docker build --file _assets/build/Dockerfile-bootnode . \
-		--build-arg "build_tags=$(BUILD_TAGS)" \
-		--build-arg "build_flags=$(BUILD_FLAGS)" \
-		--label "commit=$(GIT_COMMIT)" \
-		--label "author=$(GIT_AUTHOR)" \
+		--build-arg 'build_tags=$(BUILD_TAGS)' \
+		--build-arg 'build_flags=$(BUILD_FLAGS)' \
+		--label 'commit=$(GIT_COMMIT)' \
+		--label 'author=$(GIT_AUTHOR)' \
 		-t $(BOOTNODE_IMAGE_NAME):$(DOCKER_IMAGE_CUSTOM_TAG) \
 		-t $(BOOTNODE_IMAGE_NAME):latest
 
+push-docker-images: SHELL := /bin/sh
 push-docker-images: docker-image bootnode-image
 	docker push $(BOOTNODE_IMAGE_NAME):$(DOCKER_IMAGE_CUSTOM_TAG)
 	docker push $(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_CUSTOM_TAG)
 
+clean-docker-images: SHELL := /bin/sh
 clean-docker-images:
 	docker rmi -f $(SHELL=/bin/sh shell docker image ls --filter="reference=$(DOCKER_IMAGE_NAME)" --quiet)
 
 # See https://www.gnu.org/software/make/manual/html_node/Target_002dspecific.html to understand this magic.
+push-docker-images: SHELL := /bin/sh
 push-docker-images-latest: GIT_BRANCH = $(SHELL=/bin/sh shell git rev-parse --abbrev-ref HEAD)
 push-docker-images-latest: GIT_LOCAL  = $(SHELL=/bin/sh shell git rev-parse @)
 push-docker-images-latest: GIT_REMOTE = $(SHELL=/bin/sh shell git fetch -q && git rev-parse remotes/origin/develop || echo 'NO_DEVELOP')
