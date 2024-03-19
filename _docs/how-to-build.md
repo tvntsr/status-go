@@ -8,9 +8,10 @@ status-go is an underlying part of Status. It heavily depends on [go-ethereum](h
 
 ### 1. Requirements
 
-* Nix
-* Go version >=1.18 (but check go.mod anyway).
+* Nix (Installed automatically)
 * Docker (only if cross-compiling).
+
+> go is provided by Nix
 
 ### 2. Clone the repository
 
