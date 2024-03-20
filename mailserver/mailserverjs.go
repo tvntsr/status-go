@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// +build !js
+// +build js
 
 package mailserver
 
@@ -26,8 +26,6 @@ import (
 	"math/rand"
 	"sync"
 	"time"
-
-	prom "github.com/prometheus/client_golang/prometheus"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -144,7 +142,6 @@ func (s *WakuMailServer) Deliver(peerID []byte, req wakucommon.MessagesRequest) 
 func (s *WakuMailServer) DeliverMail(peerID []byte, req *wakucommon.Envelope) {
 	payload, err := s.decodeRequest(peerID, req)
 	if err != nil {
-		deliveryFailuresCounter.WithLabelValues("validation").Inc()
 		log.Error(
 			"[mailserver:DeliverMail] request failed validaton",
 			"peerID", types.BytesToHash(peerID),
@@ -445,10 +442,6 @@ func (s *mailServer) Archive(env types.Envelope) {
 }
 
 func (s *mailServer) DeliverMail(peerID, reqID types.Hash, req MessagesRequestPayload) {
-	timer := prom.NewTimer(mailDeliveryDuration)
-	defer timer.ObserveDuration()
-
-	deliveryAttemptsCounter.Inc()
 	log.Info(
 		"[mailserver:DeliverMail] delivering mail",
 		"peerID", peerID.String(),
@@ -471,7 +464,6 @@ func (s *mailServer) DeliverMail(peerID, reqID types.Hash, req MessagesRequestPa
 	)
 
 	if err := req.Validate(); err != nil {
-		syncFailuresCounter.WithLabelValues("req_invalid").Inc()
 		log.Error(
 			"[mailserver:DeliverMail] request invalid",
 			"peerID", peerID.String(),
@@ -483,7 +475,6 @@ func (s *mailServer) DeliverMail(peerID, reqID types.Hash, req MessagesRequestPa
 	}
 
 	if s.exceedsPeerRequests(peerID) {
-		deliveryFailuresCounter.WithLabelValues("peer_req_limit").Inc()
 		log.Error(
 			"[mailserver:DeliverMail] peer exceeded the limit",
 			"peerID", peerID.String(),
@@ -491,10 +482,6 @@ func (s *mailServer) DeliverMail(peerID, reqID types.Hash, req MessagesRequestPa
 		)
 		s.sendHistoricMessageErrorResponse(peerID, reqID, fmt.Errorf("rate limit exceeded"))
 		return
-	}
-
-	if req.Batch {
-		requestsBatchedCounter.Inc()
 	}
 
 	iter, err := s.createIterator(req)
@@ -545,7 +532,6 @@ func (s *mailServer) DeliverMail(peerID, reqID types.Hash, req MessagesRequestPa
 
 	// Wait for the goroutine to finish the work. It may return an error.
 	if err := <-errCh; err != nil {
-		deliveryFailuresCounter.WithLabelValues("process").Inc()
 		log.Error(
 			"[mailserver:DeliverMail] error while processing",
 			"err", err,
@@ -558,7 +544,6 @@ func (s *mailServer) DeliverMail(peerID, reqID types.Hash, req MessagesRequestPa
 
 	// Processing of the request could be finished earlier due to iterator error.
 	if err := iter.Error(); err != nil {
-		deliveryFailuresCounter.WithLabelValues("iterator").Inc()
 		log.Error(
 			"[mailserver:DeliverMail] iterator failed",
 			"err", err,
@@ -585,11 +570,8 @@ func (s *mailServer) SyncMail(peerID types.Hash, req MessagesRequestPayload) err
 
 	requestID := fmt.Sprintf("%d-%d", time.Now().UnixNano(), rand.Intn(1000)) // nolint: gosec
 
-	syncAttemptsCounter.Inc()
-
 	// Check rate limiting for a requesting peer.
 	if s.exceedsPeerRequests(peerID) {
-		syncFailuresCounter.WithLabelValues("req_per_sec_limit").Inc()
 		log.Error("Peer exceeded request per seconds limit", "peerID", peerID.String())
 		return fmt.Errorf("requests per seconds limit exceeded")
 	}
@@ -597,13 +579,11 @@ func (s *mailServer) SyncMail(peerID types.Hash, req MessagesRequestPayload) err
 	req.SetDefaults()
 
 	if err := req.Validate(); err != nil {
-		syncFailuresCounter.WithLabelValues("req_invalid").Inc()
 		return fmt.Errorf("request is invalid: %v", err)
 	}
 
 	iter, err := s.createIterator(req)
 	if err != nil {
-		syncFailuresCounter.WithLabelValues("iterator").Inc()
 		return err
 	}
 	defer func() { _ = iter.Release() }()
@@ -637,7 +617,6 @@ func (s *mailServer) SyncMail(peerID types.Hash, req MessagesRequestPayload) err
 
 	// Wait for the goroutine to finish the work. It may return an error.
 	if err := <-errCh; err != nil {
-		syncFailuresCounter.WithLabelValues("routine").Inc()
 		_ = s.service.SendSyncResponse(
 			peerID.Bytes(),
 			s.adapter.CreateSyncResponse(nil, nil, false, "failed to send a response"),
@@ -647,7 +626,6 @@ func (s *mailServer) SyncMail(peerID types.Hash, req MessagesRequestPayload) err
 
 	// Processing of the request could be finished earlier due to iterator error.
 	if err := iter.Error(); err != nil {
-		syncFailuresCounter.WithLabelValues("iterator").Inc()
 		_ = s.service.SendSyncResponse(
 			peerID.Bytes(),
 			s.adapter.CreateSyncResponse(nil, nil, false, "failed to process all envelopes"),
@@ -662,7 +640,6 @@ func (s *mailServer) SyncMail(peerID types.Hash, req MessagesRequestPayload) err
 		s.adapter.CreateSyncResponse(nil, nextCursor, true, ""),
 	)
 	if err != nil {
-		syncFailuresCounter.WithLabelValues("response_send").Inc()
 		return fmt.Errorf("failed to send the final sync response: %v", err)
 	}
 
@@ -732,8 +709,6 @@ func (s *mailServer) processRequestInBundles(
 	output chan<- []rlp.RawValue,
 	cancel <-chan struct{},
 ) ([]byte, types.Hash) {
-	timer := prom.NewTimer(requestsInBundlesDuration)
-	defer timer.ObserveDuration()
 
 	var (
 		bundle                 []rlp.RawValue
@@ -871,9 +846,6 @@ batchLoop:
 		}
 	}
 
-	envelopesCounter.Inc()
-	sentEnvelopeBatchSizeMeter.Observe(float64(processedEnvelopesSize))
-
 	log.Info(
 		"[mailserver:processRequestInBundles] envelopes published",
 		"requestID", requestID,
@@ -884,8 +856,6 @@ batchLoop:
 }
 
 func (s *mailServer) sendRawEnvelopes(peerID types.Hash, envelopes []rlp.RawValue, batch bool) error {
-	timer := prom.NewTimer(sendRawEnvelopeDuration)
-	defer timer.ObserveDuration()
 
 	if batch {
 		return s.service.SendRawP2PDirect(peerID.Bytes(), envelopes...)
@@ -904,7 +874,6 @@ func (s *mailServer) sendHistoricMessageResponse(peerID, reqID, lastEnvelopeHash
 	payload := s.adapter.CreateRequestCompletedPayload(reqID, lastEnvelopeHash, cursor)
 	err := s.service.SendHistoricMessageResponse(peerID.Bytes(), payload)
 	if err != nil {
-		deliveryFailuresCounter.WithLabelValues("historic_msg_resp").Inc()
 		log.Error(
 			"[mailserver:DeliverMail] error sending historic message response",
 			"err", err,

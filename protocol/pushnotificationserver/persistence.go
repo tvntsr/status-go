@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	sqlite3 "github.com/mutecomm/go-sqlcipher/v4"
+	//	sqlite3 "github.com/mutecomm/go-sqlcipher/v4" // ::FIXME:: js version???
 
 	"github.com/status-im/status-go/eth-node/crypto"
 	"github.com/status-im/status-go/protocol/protobuf"
@@ -184,9 +184,10 @@ func (p *SQLitePersistence) GetIdentity() (*ecdsa.PrivateKey, error) {
 
 func (p *SQLitePersistence) PushNotificationExists(messageID []byte) (bool, error) {
 	_, err := p.db.Exec(`INSERT INTO push_notification_server_notifications  VALUES (?)`, messageID)
-	if err != nil && err.(sqlite3.Error).ExtendedCode == sqlite3.ErrConstraintUnique {
+	// ::FIXME:: sqlite3.Error for js????
+	if err != nil {/*&& err.(sqlite3.Error).ExtendedCode == sqlite3.ErrConstraintUnique {
 		return true, nil
-	} else if err != nil {
+	} else if err != nil { */
 		return false, err
 	}
 

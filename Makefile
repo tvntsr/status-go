@@ -36,6 +36,8 @@ GIT_ROOT := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 GIT_COMMIT = $(shell git rev-parse --short HEAD)
 GIT_AUTHOR ?= $(shell git config user.email || echo $$USER)
 
+GO ?= go
+
 ENABLE_METRICS ?= true
 BUILD_TAGS ?= gowaku_no_rln
 BUILD_FLAGS ?= $(shell echo "-ldflags='\
@@ -160,6 +162,34 @@ statusgo-library: ##@cross-compile Build status-go as static library for current
 		./build/bin/statusgo-lib
 	@echo "Static library built:"
 	@ls -la build/bin/libstatus.*
+
+
+
+statusgo-library-wasm: ##@cross-compile Build status-go as static library for current platform
+## cmd/library/README.md explains the magic incantation behind this
+	mkdir -p build/wasm/statusgo-wasm
+	go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
+	@echo "Building wasm library..."
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 go build \
+		-tags "gowaku_no_rln,wasm,js" \
+		-o build/bin/libstatus.wasm \
+		./build/wasm/statusgo-wasm
+	@echo "WASM library built:"
+	@ls -la build/bin/libstatus.*
+
+
+statusgo-library-wasmt: ##@cross-compile Build status-go as static library for current platform
+## cmd/library/README.md explains the magic incantation behind this
+	mkdir -p build/wasm/statusgo-wasm
+	go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
+	@echo "Building wasm library..."
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 tinygo build -target=wasm \
+		-tags "gowaku_no_rln wasm js" \
+		-o build/bin/libstatus.wasm \
+		./build/wasm/statusgo-wasm
+	@echo "WASM library built:"
+	@ls -la build/bin/libstatus.*
+
 
 statusgo-shared-library: ##@cross-compile Build status-go as shared library for current platform
 	## cmd/library/README.md explains the magic incantation behind this

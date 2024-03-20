@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+FROM tinygo/tinygo-dev:latest
+
+# Set destination for COPY
+WORKDIR /home/tinygo/app
+
+# Copy the source code.
+COPY . .
+
+# Build
+#RUN GOOS=js GOARCH=wasm go build -o build/bin/libstatus.wasm ./build/bin/statusgo-lib
+RUN mkdir -p build/wasm/statusgo-wasm
+
+RUN make statusgo-library-wasmt
+
+# Run
+CMD [bash0]

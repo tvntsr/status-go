@@ -261,7 +261,8 @@ func writeKeyFile(file string, content []byte) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(name, file)
+	name = name
+	return nil // ::FIXME:: should be  os.Rename(name, file), but it is not in tidygo wasm
 }
 
 // keyFileName implements the naming convention for keyfiles:

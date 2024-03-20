@@ -127,7 +127,7 @@ func (ks keyStorePassphrase) StoreKey(filename string, key *Key, auth string) er
 			return fmt.Errorf(msg, tmpName, err)
 		}
 	}
-	return os.Rename(tmpName, filename)
+	return nil // ::FIXME:: there is no os.Rename(tmpName, filename) in tidygo wasm
 }
 
 func (ks keyStorePassphrase) JoinPath(filename string) string {

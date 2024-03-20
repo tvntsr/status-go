@@ -1,3 +1,5 @@
+// +build !js
+
 package mailserver
 
 import prom "github.com/prometheus/client_golang/prometheus"

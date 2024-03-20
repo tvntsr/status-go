@@ -2,7 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
-	"database/sql/driver"
+	//	"database/sql/driver"
 	"errors"
 	"fmt"
 	"net/url"
@@ -168,45 +168,46 @@ func openDB(path string, key string, kdfIterationsNumber int, cipherPageSize int
 	driverName := fmt.Sprintf("sqlcipher_with_extensions-%d", len(sql.Drivers()))
 	sql.Register(driverName, &sqlcipher.SQLiteDriver{
 		ConnectHook: func(conn *sqlcipher.SQLiteConn) error {
-			if _, err := conn.Exec("PRAGMA foreign_keys=ON", []driver.Value{}); err != nil {
-				return errors.New("failed to set `foreign_keys` pragma")
-			}
+			// ::FIXME:: thete is no Exec for js
+			// if _, err := conn.Exec("PRAGMA foreign_keys=ON", []driver.Value{}); err != nil {
+			// 	return errors.New("failed to set `foreign_keys` pragma")
+			// }
 
-			if _, err := conn.Exec(fmt.Sprintf("PRAGMA key = '%s'", key), []driver.Value{}); err != nil {
-				return errors.New("failed to set `key` pragma")
-			}
+			// if _, err := conn.Exec(fmt.Sprintf("PRAGMA key = '%s'", key), []driver.Value{}); err != nil {
+			// 	return errors.New("failed to set `key` pragma")
+			// }
 
 			if kdfIterationsNumber <= 0 {
 				kdfIterationsNumber = dbsetup.ReducedKDFIterationsNumber
 			}
 
-			if _, err := conn.Exec(fmt.Sprintf("PRAGMA cipher_page_size = %d", cipherPageSize), nil); err != nil {
-				fmt.Println("failed to set cipher_page_size pragma")
-				return err
-			}
-			if _, err := conn.Exec("PRAGMA cipher_hmac_algorithm = HMAC_SHA1", nil); err != nil {
-				fmt.Println("failed to set cipher_hmac_algorithm pragma")
-				return err
-			}
+			// if _, err := conn.Exec(fmt.Sprintf("PRAGMA cipher_page_size = %d", cipherPageSize), nil); err != nil {
+			// 	fmt.Println("failed to set cipher_page_size pragma")
+			// 	return err
+			// }
+			// if _, err := conn.Exec("PRAGMA cipher_hmac_algorithm = HMAC_SHA1", nil); err != nil {
+			// 	fmt.Println("failed to set cipher_hmac_algorithm pragma")
+			// 	return err
+			// }
 
-			if _, err := conn.Exec("PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA1", nil); err != nil {
-				fmt.Println("failed to set cipher_kdf_algorithm pragma")
-				return err
-			}
+			// if _, err := conn.Exec("PRAGMA cipher_kdf_algorithm = PBKDF2_HMAC_SHA1", nil); err != nil {
+			// 	fmt.Println("failed to set cipher_kdf_algorithm pragma")
+			// 	return err
+			// }
 
-			if _, err := conn.Exec(fmt.Sprintf("PRAGMA kdf_iter = '%d'", kdfIterationsNumber), []driver.Value{}); err != nil {
-				return errors.New("failed to set `kdf_iter` pragma")
-			}
+			// if _, err := conn.Exec(fmt.Sprintf("PRAGMA kdf_iter = '%d'", kdfIterationsNumber), []driver.Value{}); err != nil {
+			// 	return errors.New("failed to set `kdf_iter` pragma")
+			// }
 
 			// readers do not block writers and faster i/o operations
-			if _, err := conn.Exec("PRAGMA journal_mode=WAL", []driver.Value{}); err != nil && path != InMemoryPath {
-				return fmt.Errorf("failed to set `journal_mode` pragma: %w", err)
-			}
+			// if _, err := conn.Exec("PRAGMA journal_mode=WAL", []driver.Value{}); err != nil && path != InMemoryPath {
+			// 	return fmt.Errorf("failed to set `journal_mode` pragma: %w", err)
+			// }
 
-			// workaround to mitigate the issue of "database is locked" errors during concurrent write operations
-			if _, err := conn.Exec("PRAGMA busy_timeout=60000", []driver.Value{}); err != nil {
-				return errors.New("failed to set `busy_timeout` pragma")
-			}
+			// // workaround to mitigate the issue of "database is locked" errors during concurrent write operations
+			// if _, err := conn.Exec("PRAGMA busy_timeout=60000", []driver.Value{}); err != nil {
+			// 	return errors.New("failed to set `busy_timeout` pragma")
+			// }
 
 			return nil
 		},

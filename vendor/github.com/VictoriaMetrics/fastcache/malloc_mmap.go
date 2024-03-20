@@ -1,4 +1,4 @@
-// +build !appengine,!windows
+// +build !appengine,!windows,!js
 
 package fastcache
 

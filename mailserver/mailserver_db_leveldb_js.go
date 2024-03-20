@@ -1,5 +1,4 @@
-// +build !js
-
+// +build js
 package mailserver
 
 import (
@@ -15,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/status-im/status-go/eth-node/types"
-	waku "github.com/status-im/status-go/waku/common"
 )
 
 type LevelDB struct {
@@ -118,10 +116,8 @@ func (db *LevelDB) GetEnvelope(key *DBKey) ([]byte, error) {
 }
 
 func (db *LevelDB) updateArchivedEnvelopesCount() {
-	if count, err := db.envelopesCount(); err != nil {
+	if _, err := db.envelopesCount(); err != nil {
 		log.Warn("db query for envelopes count failed", "err", err)
-	} else {
-		archivedEnvelopesGauge.WithLabelValues(db.name).Set(float64(count))
 	}
 }
 
@@ -131,7 +127,6 @@ func (db *LevelDB) BuildIterator(query CursorQuery) (Iterator, error) {
 
 	i := db.ldb.NewIterator(&util.Range{Start: query.start, Limit: query.end}, nil)
 
-	envelopeQueriesCounter.WithLabelValues("unknown", "unknown").Inc()
 	// seek to the end as we want to return envelopes in a descending order
 	if len(query.cursor) == CursorLength {
 		i.Seek(query.cursor)
@@ -211,17 +206,12 @@ func (db *LevelDB) SaveEnvelope(env types.Envelope) error {
 	rawEnvelope, err := rlp.EncodeToBytes(env.Unwrap())
 	if err != nil {
 		log.Error(fmt.Sprintf("rlp.EncodeToBytes failed: %s", err))
-		archivedErrorsCounter.WithLabelValues(db.name).Inc()
 		return err
 	}
 
 	if err = db.ldb.Put(key.Bytes(), rawEnvelope, nil); err != nil {
 		log.Error(fmt.Sprintf("Writing to DB failed: %s", err))
-		archivedErrorsCounter.WithLabelValues(db.name).Inc()
 	}
-	archivedEnvelopesGauge.WithLabelValues(db.name).Inc()
-	archivedEnvelopeSizeMeter.WithLabelValues(db.name).Observe(
-		float64(waku.EnvelopeHeaderLength + env.Size()))
 	return err
 }
 

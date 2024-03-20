@@ -21,8 +21,8 @@ package discover
 
 import (
 	"fmt"
-	"net"
-	"sort"
+	//"net"
+	//"sort"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -63,6 +63,9 @@ func checkClockDrift() {
 // Note, it executes two extra measurements compared to the number of requested
 // ones to be able to discard the two extremes as outliers.
 func sntpDrift(measurements int) (time.Duration, error) {
+	// ::FIXME:: net.ResolveUDPAddr and net.DialUDP is not awailable on WASM
+	return 0, fmt.Errorf("Not available on WASM")
+	/*
 	// Resolve the address of the NTP server
 	addr, err := net.ResolveUDPAddr("udp", ntpPool+":123")
 	if err != nil {
@@ -116,4 +119,5 @@ func sntpDrift(measurements int) (time.Duration, error) {
 		drift += drifts[i]
 	}
 	return drift / time.Duration(measurements), nil
+	*/
 }

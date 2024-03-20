@@ -31,9 +31,14 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enr"
 )
 
+// ::FIXME:: there is no such function on wasm
+func lookupIP(host string) ([]net.IP, error) {
+	return nil, fmt.Errorf("Not implemented on wasm")
+}
+
 var (
 	incompleteNodeURL = regexp.MustCompile("(?i)^(?:enode://)?([0-9a-f]+)$")
-	lookupIPFunc      = net.LookupIP
+	lookupIPFunc      = lookupIP
 )
 
 // MustParseV4 parses a node URL. It panics if the URL is not valid.

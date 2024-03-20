@@ -15,6 +15,9 @@
 // It is largely copied from github.com/coreos/etcd/pkg/fileutil to avoid the
 // dependency chain it brings with it.
 // Please check github.com/coreos/etcd for licensing information.
+
+// +build !wasm
+
 package fileutil
 
 import (
