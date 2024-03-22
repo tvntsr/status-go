@@ -20,7 +20,7 @@ func main() {
 	fset := token.NewFileSet()
 
 	// Parse the whole `mobile/` directory, excluding test files
-	parsedAST, err := parser.ParseDir(fset, "mobile/", isCodeFile, parser.AllErrors)
+	parsedAST, err := parser.ParseDir(fset, "wasm/", isCodeFile, parser.AllErrors)
 	if err != nil {
 		fmt.Printf("Error parsing directory: %+v\n", err)
 		os.Exit(1)

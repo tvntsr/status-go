@@ -183,7 +183,7 @@ statusgo-library-wasmt: ##@cross-compile Build status-go as static library for c
 	mkdir -p build/wasm/statusgo-wasm
 	go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
 	@echo "Building wasm library..."
-	GOOS=js GOARCH=wasm CGO_ENABLED=0 tinygo build -target=wasm \
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 tinygo build -p 24 -interp-timeout=60m -target=wasm \
 		-tags "gowaku_no_rln wasm js" \
 		-o build/bin/libstatus.wasm \
 		./build/wasm/statusgo-wasm
