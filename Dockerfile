@@ -1,6 +1,4 @@
-FROM golang:1.19
-
-RUN go install github.com/shurcooL/goexec@latest
+FROM golang:1.22
 
 # Set destination for COPY
 WORKDIR /app
@@ -8,11 +6,12 @@ WORKDIR /app
 # Copy the source code.
 COPY . .
 
-# Build
-#RUN GOOS=js GOARCH=wasm go build -o build/bin/libstatus.wasm ./build/bin/statusgo-lib
-RUN make statusgo-library-wasm
+ARG TARGET=wasip1 # js
 
-RUN cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" .
+# Build
+RUN GOOS="$TARGET" GOARCH="wasm" CGO_ENABLED=0 go build -ldflags="-s -w" -tags "gowaku_no_rln,wasm" -o build/bin/libwallet.wasm ./wasm/wallet/
+RUN ls -la build/bin/libwallet.wasm 
+RUN echo "Target is " $TARGET
 
 # Run
 CMD [goexec 'http.ListenAndServe(`:8080`, http.FileServer(http.Dir(`.`)))']

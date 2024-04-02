@@ -2,30 +2,21 @@ package params
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
+	//	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/url"
+
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	validator "gopkg.in/go-playground/validator.v9"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/discv5"
-	"github.com/ethereum/go-ethereum/params"
-
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
-	"github.com/status-im/status-go/static"
-	wakucommon "github.com/status-im/status-go/waku/common"
-	wakuv2common "github.com/status-im/status-go/wakuv2/common"
 )
+
+type discv5Topic string
 
 // ----------
 // LightEthConfig
@@ -486,11 +477,11 @@ type NodeConfig struct {
 
 	// RegisterTopics a list of specific topics where the peer wants to be
 	// discoverable.
-	RegisterTopics []discv5.Topic `json:"RegisterTopics"`
+	RegisterTopics []discv5Topic `json:"RegisterTopics"`
 
 	// RequiredTopics list of topics where a client wants to search for
 	// discoverable peers with the discovery limits.
-	RequireTopics map[discv5.Topic]Limits `json:"RequireTopics"`
+	RequireTopics map[discv5Topic]Limits `json:"RequireTopics"`
 
 	// MailServerRegistryAddress is the MailServerRegistry contract address
 	MailServerRegistryAddress string
@@ -575,24 +566,24 @@ type PushNotificationServer struct {
 	*ecdsa.PublicKey
 }
 
-func (p *PushNotificationServer) MarshalText() ([]byte, error) {
-	return []byte(hex.EncodeToString(crypto.FromECDSAPub(p.PublicKey))), nil
-}
+// func (p *PushNotificationServer) MarshalText() ([]byte, error) {
+// 	return []byte(hex.EncodeToString(crypto.FromECDSAPub(p.PublicKey))), nil
+// }
 
-func (p *PushNotificationServer) UnmarshalText(data []byte) error {
-	pubKeyBytes, err := hex.DecodeString(string(data))
-	if err != nil {
-		return err
-	}
+// func (p *PushNotificationServer) UnmarshalText(data []byte) error {
+// 	pubKeyBytes, err := hex.DecodeString(string(data))
+// 	if err != nil {
+// 		return err
+// 	}
 
-	pk, err := crypto.UnmarshalPubkey(pubKeyBytes)
-	if err != nil {
-		return err
-	}
+// 	pk, err := crypto.UnmarshalPubkey(pubKeyBytes)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	p.PublicKey = pk
-	return nil
-}
+// 	p.PublicKey = pk
+// 	return nil
+// }
 
 type PushNotificationServerConfig struct {
 	Enabled   bool
@@ -679,264 +670,264 @@ type TorrentConfig struct {
 }
 
 // Validate validates the ShhextConfig struct and returns an error if inconsistent values are found
-func (c *ShhextConfig) Validate(validate *validator.Validate) error {
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
-	if c.PFSEnabled && len(c.BackupDisabledDataDir) == 0 {
-		return errors.New("field BackupDisabledDataDir is required if PFSEnabled is true")
-	}
-	return nil
-}
+// func (c *ShhextConfig) Validate(validate *validator.Validate) error {
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
+// 	if c.PFSEnabled && len(c.BackupDisabledDataDir) == 0 {
+// 		return errors.New("field BackupDisabledDataDir is required if PFSEnabled is true")
+// 	}
+// 	return nil
+// }
 
 // Option is an additional setting when creating a NodeConfig
 // using NewNodeConfigWithDefaults.
 type Option func(*NodeConfig) error
 
 // WithFleet loads one of the preconfigured Status fleets.
-func WithFleet(fleet string) Option {
-	return func(c *NodeConfig) error {
-		if fleet == FleetUndefined {
-			return nil
-		}
-		c.NoDiscovery = false
-		c.ClusterConfig.Enabled = true
-		return loadConfigFromAsset(fmt.Sprintf("../config/cli/fleet-%s.json", fleet), c)
-	}
-}
+// func WithFleet(fleet string) Option {
+// 	return func(c *NodeConfig) error {
+// 		if fleet == FleetUndefined {
+// 			return nil
+// 		}
+// 		c.NoDiscovery = false
+// 		c.ClusterConfig.Enabled = true
+// 		return loadConfigFromAsset(fmt.Sprintf("../config/cli/fleet-%s.json", fleet), c)
+// 	}
+// }
 
-// WithLES enabled LES protocol.
-func WithLES() Option {
-	return func(c *NodeConfig) error {
-		return loadConfigFromAsset("../config/cli/les-enabled.json", c)
-	}
-}
+// // WithLES enabled LES protocol.
+// func WithLES() Option {
+// 	return func(c *NodeConfig) error {
+// 		return loadConfigFromAsset("../config/cli/les-enabled.json", c)
+// 	}
+// }
 
-// WithMailserver enables MailServer.
-func WithMailserver() Option {
-	return func(c *NodeConfig) error {
-		return loadConfigFromAsset("../config/cli/mailserver-enabled.json", c)
-	}
-}
+// // WithMailserver enables MailServer.
+// func WithMailserver() Option {
+// 	return func(c *NodeConfig) error {
+// 		return loadConfigFromAsset("../config/cli/mailserver-enabled.json", c)
+// 	}
+// }
 
 // NewNodeConfigWithDefaults creates new node configuration object
 // with some defaults suitable for adhoc use.
-func NewNodeConfigWithDefaults(dataDir string, networkID uint64, opts ...Option) (*NodeConfig, error) {
-	c, err := NewNodeConfig(dataDir, networkID)
-	if err != nil {
-		return nil, err
-	}
+// func NewNodeConfigWithDefaults(dataDir string, networkID uint64, opts ...Option) (*NodeConfig, error) {
+// 	c, err := NewNodeConfig(dataDir, networkID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	c.NoDiscovery = true
-	c.HTTPHost = ""
-	c.ListenAddr = ":30303"
-	c.LogEnabled = true
-	c.LogLevel = "INFO"
-	c.LogMaxSize = 100
-	c.LogCompressRotated = true
-	c.LogMaxBackups = 3
-	c.LogToStderr = true
-	c.WakuConfig.Enabled = true
+// 	c.NoDiscovery = true
+// 	c.HTTPHost = ""
+// 	c.ListenAddr = ":30303"
+// 	c.LogEnabled = true
+// 	c.LogLevel = "INFO"
+// 	c.LogMaxSize = 100
+// 	c.LogCompressRotated = true
+// 	c.LogMaxBackups = 3
+// 	c.LogToStderr = true
+// 	c.WakuConfig.Enabled = true
 
-	for _, opt := range opts {
-		if err := opt(c); err != nil {
-			return nil, err
-		}
-	}
+// 	for _, opt := range opts {
+// 		if err := opt(c); err != nil {
+// 			return nil, err
+// 		}
+// 	}
 
-	c.updatePeerLimits()
+// 	c.updatePeerLimits()
 
-	if err := c.Validate(); err != nil {
-		return nil, err
-	}
+// 	if err := c.Validate(); err != nil {
+// 		return nil, err
+// 	}
 
-	return c, nil
-}
+// 	return c, nil
+// }
 
-func (c *NodeConfig) setDefaultPushNotificationsServers() error {
-	if c.ClusterConfig.Fleet == FleetUndefined {
-		return nil
-	}
+// func (c *NodeConfig) setDefaultPushNotificationsServers() error {
+// 	if c.ClusterConfig.Fleet == FleetUndefined {
+// 		return nil
+// 	}
 
-	// If empty load defaults from the fleet
-	if len(c.ClusterConfig.PushNotificationsServers) == 0 {
-		log.Debug("empty push notification servers, setting", "fleet", c.ClusterConfig.Fleet)
-		defaultConfig := &NodeConfig{}
-		err := loadConfigFromAsset(fmt.Sprintf("../config/cli/fleet-%s.json", c.ClusterConfig.Fleet), defaultConfig)
-		if err != nil {
-			return err
-		}
-		c.ClusterConfig.PushNotificationsServers = defaultConfig.ClusterConfig.PushNotificationsServers
-	}
+// 	// If empty load defaults from the fleet
+// 	if len(c.ClusterConfig.PushNotificationsServers) == 0 {
+// 		log.Debug("empty push notification servers, setting", "fleet", c.ClusterConfig.Fleet)
+// 		defaultConfig := &NodeConfig{}
+// 		err := loadConfigFromAsset(fmt.Sprintf("../config/cli/fleet-%s.json", c.ClusterConfig.Fleet), defaultConfig)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		c.ClusterConfig.PushNotificationsServers = defaultConfig.ClusterConfig.PushNotificationsServers
+// 	}
 
-	// If empty set the default servers
-	if len(c.ShhextConfig.DefaultPushNotificationsServers) == 0 {
-		log.Debug("setting default push notification servers", "cluster servers", c.ClusterConfig.PushNotificationsServers)
-		for _, pk := range c.ClusterConfig.PushNotificationsServers {
-			keyBytes, err := hex.DecodeString("04" + pk)
-			if err != nil {
-				return err
-			}
+// 	// If empty set the default servers
+// 	if len(c.ShhextConfig.DefaultPushNotificationsServers) == 0 {
+// 		log.Debug("setting default push notification servers", "cluster servers", c.ClusterConfig.PushNotificationsServers)
+// 		for _, pk := range c.ClusterConfig.PushNotificationsServers {
+// 			keyBytes, err := hex.DecodeString("04" + pk)
+// 			if err != nil {
+// 				return err
+// 			}
 
-			key, err := crypto.UnmarshalPubkey(keyBytes)
-			if err != nil {
-				return err
-			}
-			c.ShhextConfig.DefaultPushNotificationsServers = append(c.ShhextConfig.DefaultPushNotificationsServers, &PushNotificationServer{PublicKey: key})
-		}
-	}
-	return nil
-}
+// 			key, err := crypto.UnmarshalPubkey(keyBytes)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			c.ShhextConfig.DefaultPushNotificationsServers = append(c.ShhextConfig.DefaultPushNotificationsServers, &PushNotificationServer{PublicKey: key})
+// 		}
+// 	}
+// 	return nil
+// }
 
 // UpdateWithDefaults updates config with missing default values, as
 // the config is only generated once and is thereafter pulled from the database.
 // The way it is stored in the database makes this step necessary as it's stored as a blob and can't be easily migrated.
-func (c *NodeConfig) UpdateWithDefaults() error {
-	// Empty APIModules will fallback to services' APIs definition.
-	// If any API is defined as public, it will be exposed.
-	// We disallow empty APIModules to avoid confusion
-	// when some APIs suddenly become available for Dapps.
-	// More: https://github.com/status-im/status-go/issues/1870.
-	if c.APIModules == "" {
-		c.APIModules = "net,web3,eth"
-	}
+// func (c *NodeConfig) UpdateWithDefaults() error {
+// 	// Empty APIModules will fallback to services' APIs definition.
+// 	// If any API is defined as public, it will be exposed.
+// 	// We disallow empty APIModules to avoid confusion
+// 	// when some APIs suddenly become available for Dapps.
+// 	// More: https://github.com/status-im/status-go/issues/1870.
+// 	if c.APIModules == "" {
+// 		c.APIModules = "net,web3,eth"
+// 	}
 
-	// Override defaultMinPoW passed by the client
-	if c.WakuConfig.Enabled {
-		c.WakuConfig.MinimumPoW = WakuMinimumPoW
-	}
+// 	// Override defaultMinPoW passed by the client
+// 	if c.WakuConfig.Enabled {
+// 		c.WakuConfig.MinimumPoW = WakuMinimumPoW
+// 	}
 
-	return c.setDefaultPushNotificationsServers()
-}
+// 	return c.setDefaultPushNotificationsServers()
+// }
 
 // NewNodeConfigWithDefaultsAndFiles creates new node configuration object
 // with some defaults suitable for adhoc use and applies config files on top.
-func NewNodeConfigWithDefaultsAndFiles(
-	dataDir string, networkID uint64, opts []Option, files []string,
-) (*NodeConfig, error) {
-	c, err := NewNodeConfigWithDefaults(dataDir, networkID, opts...)
-	if err != nil {
-		return nil, err
-	}
+// func NewNodeConfigWithDefaultsAndFiles(
+// 	dataDir string, networkID uint64, opts []Option, files []string,
+// ) (*NodeConfig, error) {
+// 	c, err := NewNodeConfigWithDefaults(dataDir, networkID, opts...)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	for _, file := range files {
-		if err := loadConfigConfigFromFile(file, c); err != nil {
-			return nil, err
-		}
-	}
+// 	for _, file := range files {
+// 		if err := loadConfigConfigFromFile(file, c); err != nil {
+// 			return nil, err
+// 		}
+// 	}
 
-	c.updatePeerLimits()
+// 	c.updatePeerLimits()
 
-	if err := c.Validate(); err != nil {
-		return nil, err
-	}
+// 	if err := c.Validate(); err != nil {
+// 		return nil, err
+// 	}
 
-	return c, nil
-}
+// 	return c, nil
+// }
 
-// updatePeerLimits will set default peer limits expectations based on enabled services.
-func (c *NodeConfig) updatePeerLimits() {
-	if c.NoDiscovery && !c.Rendezvous {
-		return
-	}
-	if c.LightEthConfig.Enabled {
-		c.RequireTopics[discv5.Topic(LesTopic(int(c.NetworkID)))] = LesDiscoveryLimits
-	}
-}
+// // updatePeerLimits will set default peer limits expectations based on enabled services.
+// func (c *NodeConfig) updatePeerLimits() {
+// 	if c.NoDiscovery && !c.Rendezvous {
+// 		return
+// 	}
+// 	// if c.LightEthConfig.Enabled {
+// 	// 	c.RequireTopics[discv5.Topic(LesTopic(int(c.NetworkID)))] = LesDiscoveryLimits
+// 	// }
+// }
 
-// NewNodeConfig creates new node configuration object with bare-minimum defaults.
-// Important: the returned config is not validated.
-func NewNodeConfig(dataDir string, networkID uint64) (*NodeConfig, error) {
-	var keyStoreDir, keycardPairingDataFile, wakuDir, wakuV2Dir string
+// // NewNodeConfig creates new node configuration object with bare-minimum defaults.
+// // Important: the returned config is not validated.
+// func NewNodeConfig(dataDir string, networkID uint64) (*NodeConfig, error) {
+// 	var keyStoreDir, keycardPairingDataFile, wakuDir, wakuV2Dir string
 
-	if dataDir != "" {
-		keyStoreDir = filepath.Join(dataDir, "keystore")
-		keycardPairingDataFile = filepath.Join(dataDir, "keycard", "pairings.json")
+// 	if dataDir != "" {
+// 		keyStoreDir = filepath.Join(dataDir, "keystore")
+// 		keycardPairingDataFile = filepath.Join(dataDir, "keycard", "pairings.json")
 
-		wakuDir = filepath.Join(dataDir, "waku")
-		wakuV2Dir = filepath.Join(dataDir, "wakuv2")
-	}
+// 		wakuDir = filepath.Join(dataDir, "waku")
+// 		wakuV2Dir = filepath.Join(dataDir, "wakuv2")
+// 	}
 
-	config := &NodeConfig{
-		NetworkID:              networkID,
-		DataDir:                dataDir,
-		KeyStoreDir:            keyStoreDir,
-		KeycardPairingDataFile: keycardPairingDataFile,
-		Version:                Version,
-		HTTPHost:               "localhost",
-		HTTPPort:               8545,
-		HTTPVirtualHosts:       []string{"localhost"},
-		ListenAddr:             ":0",
-		APIModules:             "eth,net,web3,peer,wallet",
-		MaxPeers:               25,
-		MaxPendingPeers:        0,
-		IPCFile:                "geth.ipc",
-		log:                    log.New("package", "status-go/params.NodeConfig"),
-		LogFile:                "",
-		LogLevel:               "ERROR",
-		NoDiscovery:            true,
-		UpstreamConfig: UpstreamRPCConfig{
-			URL: getUpstreamURL(networkID),
-		},
-		LightEthConfig: LightEthConfig{
-			DatabaseCache: 16,
-		},
-		WakuConfig: WakuConfig{
-			DataDir:        wakuDir,
-			MinimumPoW:     WakuMinimumPoW,
-			TTL:            WakuTTL,
-			MaxMessageSize: wakucommon.DefaultMaxMessageSize,
-		},
-		WakuV2Config: WakuV2Config{
-			Host:           "0.0.0.0",
-			Port:           0,
-			DataDir:        wakuV2Dir,
-			MaxMessageSize: wakuv2common.DefaultMaxMessageSize,
-		},
-		ShhextConfig: ShhextConfig{
-			BackupDisabledDataDir: dataDir,
-		},
-		SwarmConfig: SwarmConfig{},
-		TorrentConfig: TorrentConfig{
-			Enabled:    false,
-			Port:       9025,
-			DataDir:    dataDir + "/archivedata",
-			TorrentDir: dataDir + "/torrents",
-		},
-		RegisterTopics: []discv5.Topic{},
-		RequireTopics:  map[discv5.Topic]Limits{},
-	}
+// 	config := &NodeConfig{
+// 		NetworkID:              networkID,
+// 		DataDir:                dataDir,
+// 		KeyStoreDir:            keyStoreDir,
+// 		KeycardPairingDataFile: keycardPairingDataFile,
+// 		Version:                Version,
+// 		HTTPHost:               "localhost",
+// 		HTTPPort:               8545,
+// 		HTTPVirtualHosts:       []string{"localhost"},
+// 		ListenAddr:             ":0",
+// 		APIModules:             "eth,net,web3,peer,wallet",
+// 		MaxPeers:               25,
+// 		MaxPendingPeers:        0,
+// 		IPCFile:                "geth.ipc",
+// 		log:                    log.New("package", "status-go/params.NodeConfig"),
+// 		LogFile:                "",
+// 		LogLevel:               "ERROR",
+// 		NoDiscovery:            true,
+// 		UpstreamConfig: UpstreamRPCConfig{
+// 			URL: getUpstreamURL(networkID),
+// 		},
+// 		LightEthConfig: LightEthConfig{
+// 			DatabaseCache: 16,
+// 		},
+// 		// WakuConfig: WakuConfig{
+// 		// 	DataDir:        wakuDir,
+// 		// 	MinimumPoW:     WakuMinimumPoW,
+// 		// 	TTL:            WakuTTL,
+// 		// 	MaxMessageSize: wakucommon.DefaultMaxMessageSize,
+// 		// },
+// 		// WakuV2Config: WakuV2Config{
+// 		// 	Host:           "0.0.0.0",
+// 		// 	Port:           0,
+// 		// 	DataDir:        wakuV2Dir,
+// 		// 	MaxMessageSize: wakuv2common.DefaultMaxMessageSize,
+// 		// },
+// 		ShhextConfig: ShhextConfig{
+// 			BackupDisabledDataDir: dataDir,
+// 		},
+// 		SwarmConfig: SwarmConfig{},
+// 		TorrentConfig: TorrentConfig{
+// 			Enabled:    false,
+// 			Port:       9025,
+// 			DataDir:    dataDir + "/archivedata",
+// 			TorrentDir: dataDir + "/torrents",
+// 		},
+// 		RegisterTopics: []discv5.Topic{},
+// 		RequireTopics:  map[discv5.Topic]Limits{},
+// 	}
 
-	return config, nil
-}
+// 	return config, nil
+// }
 
 // NewConfigFromJSON parses incoming JSON and returned it as Config
-func NewConfigFromJSON(configJSON string) (*NodeConfig, error) {
-	config, err := NewNodeConfig("", 0)
-	if err != nil {
-		return nil, err
-	}
+// func NewConfigFromJSON(configJSON string) (*NodeConfig, error) {
+// 	config, err := NewNodeConfig("", 0)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if err := loadConfigFromJSON(configJSON, config); err != nil {
-		return nil, err
-	}
+// 	if err := loadConfigFromJSON(configJSON, config); err != nil {
+// 		return nil, err
+// 	}
 
-	if err := config.Validate(); err != nil {
-		return nil, err
-	}
+// 	if err := config.Validate(); err != nil {
+// 		return nil, err
+// 	}
 
-	return config, nil
-}
+// 	return config, nil
+// }
 
-func LoadClusterConfigFromFleet(fleet string) (*ClusterConfig, error) {
-	nodeConfig := &NodeConfig{}
-	err := loadConfigFromAsset(fmt.Sprintf("../config/cli/fleet-%s.json", fleet), nodeConfig)
-	if err != nil {
-		return nil, err
-	}
+// func LoadClusterConfigFromFleet(fleet string) (*ClusterConfig, error) {
+// 	nodeConfig := &NodeConfig{}
+// 	err := loadConfigFromAsset(fmt.Sprintf("../config/cli/fleet-%s.json", fleet), nodeConfig)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return &nodeConfig.ClusterConfig, nil
-}
+// 	return &nodeConfig.ClusterConfig, nil
+// }
 
 func loadConfigFromJSON(configJSON string, nodeConfig *NodeConfig) error {
 	decoder := json.NewDecoder(strings.NewReader(configJSON))
@@ -952,13 +943,13 @@ func loadConfigConfigFromFile(path string, config *NodeConfig) error {
 	return loadConfigFromJSON(string(jsonConfig), config)
 }
 
-func loadConfigFromAsset(name string, config *NodeConfig) error {
-	data, err := static.Asset(name)
-	if err != nil {
-		return err
-	}
-	return loadConfigFromJSON(string(data), config)
-}
+// func loadConfigFromAsset(name string, config *NodeConfig) error {
+// 	data, err := static.Asset(name)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return loadConfigFromJSON(string(data), config)
+// }
 
 // Validate checks if NodeConfig fields have valid values.
 //
@@ -974,160 +965,160 @@ func loadConfigFromAsset(name string, config *NodeConfig) error {
 // has the following format:
 //
 //	Key: 'TestStruct.TestField' Error:Field validation for 'TestField' failed on the 'required' tag
-func (c *NodeConfig) Validate() error {
-	validate := NewValidator()
+// func (c *NodeConfig) Validate() error {
+// 	validate := NewValidator()
 
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
 
-	if c.NodeKey != "" {
-		if _, err := crypto.HexToECDSA(c.NodeKey); err != nil {
-			return fmt.Errorf("NodeKey is invalid (%s): %v", c.NodeKey, err)
-		}
-	}
+// 	if c.NodeKey != "" {
+// 		if _, err := crypto.HexToECDSA(c.NodeKey); err != nil {
+// 			return fmt.Errorf("NodeKey is invalid (%s): %v", c.NodeKey, err)
+// 		}
+// 	}
 
-	if c.UpstreamConfig.Enabled && c.LightEthConfig.Enabled {
-		return fmt.Errorf("both UpstreamConfig and LightEthConfig are enabled, but they are mutually exclusive")
-	}
+// 	if c.UpstreamConfig.Enabled && c.LightEthConfig.Enabled {
+// 		return fmt.Errorf("both UpstreamConfig and LightEthConfig are enabled, but they are mutually exclusive")
+// 	}
 
-	if err := c.validateChildStructs(validate); err != nil {
-		return err
-	}
+// 	if err := c.validateChildStructs(validate); err != nil {
+// 		return err
+// 	}
 
-	if c.WakuConfig.Enabled && c.WakuV2Config.Enabled && c.WakuConfig.DataDir == c.WakuV2Config.DataDir {
-		return fmt.Errorf("both Waku and WakuV2 are enabled and use the same data dir")
-	}
+// 	if c.WakuConfig.Enabled && c.WakuV2Config.Enabled && c.WakuConfig.DataDir == c.WakuV2Config.DataDir {
+// 		return fmt.Errorf("both Waku and WakuV2 are enabled and use the same data dir")
+// 	}
 
-	// Waku's data directory must be relative to the main data directory
-	// if EnableMailServer is true.
-	if c.WakuConfig.Enabled && c.WakuConfig.EnableMailServer {
-		if !strings.HasPrefix(c.WakuConfig.DataDir, c.DataDir) {
-			return fmt.Errorf("WakuConfig.DataDir must start with DataDir fragment")
-		}
-	}
+// 	// Waku's data directory must be relative to the main data directory
+// 	// if EnableMailServer is true.
+// 	if c.WakuConfig.Enabled && c.WakuConfig.EnableMailServer {
+// 		if !strings.HasPrefix(c.WakuConfig.DataDir, c.DataDir) {
+// 			return fmt.Errorf("WakuConfig.DataDir must start with DataDir fragment")
+// 		}
+// 	}
 
-	if !c.NoDiscovery && len(c.ClusterConfig.BootNodes) == 0 {
-		// No point in running discovery if we don't have bootnodes.
-		// In case we do have bootnodes, NoDiscovery should be true.
-		return fmt.Errorf("NoDiscovery is false, but ClusterConfig.BootNodes is empty")
-	}
+// 	if !c.NoDiscovery && len(c.ClusterConfig.BootNodes) == 0 {
+// 		// No point in running discovery if we don't have bootnodes.
+// 		// In case we do have bootnodes, NoDiscovery should be true.
+// 		return fmt.Errorf("NoDiscovery is false, but ClusterConfig.BootNodes is empty")
+// 	}
 
-	if c.ShhextConfig.PFSEnabled && len(c.ShhextConfig.InstallationID) == 0 {
-		return fmt.Errorf("PFSEnabled is true, but InstallationID is empty")
-	}
+// 	if c.ShhextConfig.PFSEnabled && len(c.ShhextConfig.InstallationID) == 0 {
+// 		return fmt.Errorf("PFSEnabled is true, but InstallationID is empty")
+// 	}
 
-	if len(c.ClusterConfig.RendezvousNodes) == 0 && c.Rendezvous {
-		return fmt.Errorf("Rendezvous is enabled, but ClusterConfig.RendezvousNodes is empty")
-	}
+// 	if len(c.ClusterConfig.RendezvousNodes) == 0 && c.Rendezvous {
+// 		return fmt.Errorf("Rendezvous is enabled, but ClusterConfig.RendezvousNodes is empty")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func (c *NodeConfig) validateChildStructs(validate *validator.Validate) error {
-	// Validate child structs
-	if err := c.UpstreamConfig.Validate(validate); err != nil {
-		return err
-	}
-	if err := c.ClusterConfig.Validate(validate); err != nil {
-		return err
-	}
-	if err := c.LightEthConfig.Validate(validate); err != nil {
-		return err
-	}
-	if err := c.SwarmConfig.Validate(validate); err != nil {
-		return err
-	}
-	if err := c.ShhextConfig.Validate(validate); err != nil {
-		return err
-	}
-	if err := c.TorrentConfig.Validate(validate); err != nil {
-		return err
-	}
-	return nil
-}
+// func (c *NodeConfig) validateChildStructs(validate *validator.Validate) error {
+// 	// Validate child structs
+// 	if err := c.UpstreamConfig.Validate(validate); err != nil {
+// 		return err
+// 	}
+// 	if err := c.ClusterConfig.Validate(validate); err != nil {
+// 		return err
+// 	}
+// 	if err := c.LightEthConfig.Validate(validate); err != nil {
+// 		return err
+// 	}
+// 	if err := c.SwarmConfig.Validate(validate); err != nil {
+// 		return err
+// 	}
+// 	if err := c.ShhextConfig.Validate(validate); err != nil {
+// 		return err
+// 	}
+// 	if err := c.TorrentConfig.Validate(validate); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 // Validate validates the UpstreamRPCConfig struct and returns an error if inconsistent values are found
-func (c *UpstreamRPCConfig) Validate(validate *validator.Validate) error {
-	if !c.Enabled {
-		return nil
-	}
+// func (c *UpstreamRPCConfig) Validate(validate *validator.Validate) error {
+// 	if !c.Enabled {
+// 		return nil
+// 	}
 
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
 
-	if _, err := url.ParseRequestURI(c.URL); err != nil {
-		return fmt.Errorf("UpstreamRPCConfig.URL '%s' is invalid: %v", c.URL, err.Error())
-	}
+// 	if _, err := url.ParseRequestURI(c.URL); err != nil {
+// 		return fmt.Errorf("UpstreamRPCConfig.URL '%s' is invalid: %v", c.URL, err.Error())
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-// Validate validates the ClusterConfig struct and returns an error if inconsistent values are found
-func (c *ClusterConfig) Validate(validate *validator.Validate) error {
-	if !c.Enabled {
-		return nil
-	}
+// // Validate validates the ClusterConfig struct and returns an error if inconsistent values are found
+// func (c *ClusterConfig) Validate(validate *validator.Validate) error {
+// 	if !c.Enabled {
+// 		return nil
+// 	}
 
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-// Validate validates the LightEthConfig struct and returns an error if inconsistent values are found
-func (c *LightEthConfig) Validate(validate *validator.Validate) error {
-	if !c.Enabled {
-		return nil
-	}
+// // Validate validates the LightEthConfig struct and returns an error if inconsistent values are found
+// func (c *LightEthConfig) Validate(validate *validator.Validate) error {
+// 	if !c.Enabled {
+// 		return nil
+// 	}
 
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-// Validate validates the SwarmConfig struct and returns an error if inconsistent values are found
-func (c *SwarmConfig) Validate(validate *validator.Validate) error {
-	if !c.Enabled {
-		return nil
-	}
+// // Validate validates the SwarmConfig struct and returns an error if inconsistent values are found
+// func (c *SwarmConfig) Validate(validate *validator.Validate) error {
+// 	if !c.Enabled {
+// 		return nil
+// 	}
 
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func (c *TorrentConfig) Validate(validate *validator.Validate) error {
-	if !c.Enabled {
-		return nil
-	}
+// func (c *TorrentConfig) Validate(validate *validator.Validate) error {
+// 	if !c.Enabled {
+// 		return nil
+// 	}
 
-	if err := validate.Struct(c); err != nil {
-		return err
-	}
+// 	if err := validate.Struct(c); err != nil {
+// 		return err
+// 	}
 
-	if c.Enabled && c.DataDir == "" || c.TorrentDir == "" {
-		return fmt.Errorf("TorrentConfig.DataDir and TorrentConfig.TorrentDir cannot be \"\"")
-	}
-	return nil
-}
+// 	if c.Enabled && c.DataDir == "" || c.TorrentDir == "" {
+// 		return fmt.Errorf("TorrentConfig.DataDir and TorrentConfig.TorrentDir cannot be \"\"")
+// 	}
+// 	return nil
+// }
 
-func getUpstreamURL(networkID uint64) string {
-	switch networkID {
-	case MainNetworkID:
-		return MainnetEthereumNetworkURL
-	case GoerliNetworkID:
-		return GoerliEthereumNetworkURL
-	}
+// func getUpstreamURL(networkID uint64) string {
+// 	switch networkID {
+// 	case MainNetworkID:
+// 		return MainnetEthereumNetworkURL
+// 	case GoerliNetworkID:
+// 		return GoerliEthereumNetworkURL
+// 	}
 
-	return ""
-}
+// 	return ""
+// }
 
 // Save dumps configuration to the disk
 func (c *NodeConfig) Save() error {
@@ -1171,13 +1162,13 @@ func (c *NodeConfig) AddAPIModule(m string) {
 
 // LesTopic returns discovery v5 topic derived from genesis of the provided network.
 // 1 - mainnet, 5 - goerli
-func LesTopic(netid int) string {
-	switch netid {
-	case 1:
-		return LESDiscoveryIdentifier + types.Bytes2Hex(params.MainnetGenesisHash.Bytes()[:8])
-	case 5:
-		return LESDiscoveryIdentifier + types.Bytes2Hex(params.RinkebyGenesisHash.Bytes()[:8])
-	default:
-		return ""
-	}
-}
+// func LesTopic(netid int) string {
+// 	switch netid {
+// 	case 1:
+// 		return LESDiscoveryIdentifier + types.Bytes2Hex(params.MainnetGenesisHash.Bytes()[:8])
+// 	case 5:
+// 		return LESDiscoveryIdentifier + types.Bytes2Hex(params.RinkebyGenesisHash.Bytes()[:8])
+// 	default:
+// 		return ""
+// 	}
+// }

@@ -18,6 +18,12 @@ import (
 var globalMediaCertificate *tls.Certificate = nil
 var globalMediaPem string
 
+var (
+        LocalHostIP = net.IP{127, 0, 0, 1}
+        Localhost   = "Localhost"
+)
+
+
 func makeRandomSerialNumber() (*big.Int, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	return rand.Int(rand.Reader, serialNumberLimit)

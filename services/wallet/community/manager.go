@@ -99,9 +99,6 @@ func (cm *Manager) FetchCommunityMetadata(communityID string) (*thirdparty.Commu
 }
 
 func (cm *Manager) GetCommunityImageURL(communityID string) string {
-	if cm.mediaServer != nil {
-		return cm.mediaServer.MakeWalletCommunityImagesURL(communityID)
-	}
 	return ""
 }
 

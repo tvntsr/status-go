@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 
-	"github.com/status-im/status-go/account/generator"
+	//	"github.com/status-im/status-go/account/generator"
 	"github.com/status-im/status-go/rpc"
 )
 
@@ -19,7 +19,7 @@ type GethManager struct {
 // NewGethManager returns new node account manager.
 func NewGethManager() *GethManager {
 	m := &GethManager{}
-	m.DefaultManager = &DefaultManager{accountsGenerator: generator.New(m)}
+	//	m.DefaultManager = &DefaultManager{accountsGenerator: generator.New(m)}
 	return m
 }
 
@@ -33,15 +33,15 @@ func (m *GethManager) InitKeystore(keydir string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var err error
-	m.gethAccManager, err = makeAccountManager(keydir)
-	if err != nil {
-		return err
-	}
+	//var err error
+	//	m.gethAccManager, err = makeAccountManager(keydir)
+	// if err != nil {
+	// 	return err
+	// }
 
-	m.keystore, err = makeKeyStore(m.gethAccManager)
+	//m.keystore, err = makeKeyStore(m.gethAccManager)
 	m.Keydir = keydir
-	return err
+	return nil //err
 }
 
 func (m *GethManager) GetManager() *accounts.Manager {

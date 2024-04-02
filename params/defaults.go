@@ -1,6 +1,6 @@
 package params
 
-import "github.com/ethereum/go-ethereum/p2p/discv5"
+//import "github.com/ethereum/go-ethereum/p2p/discv5"
 
 const (
 	// StatusDatabase path relative to DataDir.
@@ -71,10 +71,10 @@ const (
 	StatusChainNetworkID = 777
 
 	// WhisperDiscv5Topic used to register and search for whisper peers using discovery v5.
-	WhisperDiscv5Topic = discv5.Topic("whisper")
+	//	WhisperDiscv5Topic = discv5.Topic("whisper")
 
 	// MailServerDiscv5Topic used to register and search for mail server peers using discovery v5.
-	MailServerDiscv5Topic = discv5.Topic("whispermail")
+	//	MailServerDiscv5Topic = discv5.Topic("whispermail")
 
 	// LESDiscoveryIdentifier is a prefix for topic used for LES peers discovery.
 	LESDiscoveryIdentifier = "LES2@"

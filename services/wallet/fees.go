@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/consensus/misc"
-	"github.com/ethereum/go-ethereum/params"
+	//"github.com/ethereum/go-ethereum/consensus/misc"
+	//"github.com/ethereum/go-ethereum/params"
 	"github.com/status-im/status-go/rpc"
 )
 
@@ -71,7 +71,7 @@ func weiToGwei(val *big.Int) *big.Float {
 	result.SetInt(val)
 
 	unit := new(big.Int)
-	unit.SetInt64(params.GWei)
+	//	unit.SetInt64(params.GWei)
 
 	return result.Quo(result, new(big.Float).SetInt(unit))
 }
@@ -107,19 +107,19 @@ func (f *FeeManager) suggestedFees(ctx context.Context, chainID uint64) (*Sugges
 		}, nil
 	}
 
-	header, err := backend.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
+	// header, err := backend.HeaderByNumber(ctx, nil)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	config := params.MainnetChainConfig
-	baseFee := misc.CalcBaseFee(config, header)
+	//config := params.MainnetChainConfig
+	//baseFee := misc.CalcBaseFee(config, header)
 
 	fees, err := f.getFeeHistorySorted(chainID)
 	if err != nil {
 		return &SuggestedFees{
 			GasPrice:             weiToGwei(gasPrice),
-			BaseFee:              weiToGwei(baseFee),
+			//			BaseFee:              weiToGwei(baseFee),
 			MaxPriorityFeePerGas: weiToGwei(maxPriorityFeePerGas),
 			MaxFeePerGasLow:      weiToGwei(maxPriorityFeePerGas),
 			MaxFeePerGasMedium:   weiToGwei(maxPriorityFeePerGas),
@@ -132,25 +132,25 @@ func (f *FeeManager) suggestedFees(ctx context.Context, chainID uint64) (*Sugges
 	perc20 := fees[int64(0.2*float64(len(fees)))-1]
 
 	var maxFeePerGasMedium *big.Int
-	if baseFee.Cmp(perc20) >= 0 {
-		maxFeePerGasMedium = baseFee
-	} else {
+	// if baseFee.Cmp(perc20) >= 0 {
+	// 	maxFeePerGasMedium = baseFee
+	// } else {
 		maxFeePerGasMedium = perc20
-	}
+	//	}
 
 	if maxPriorityFeePerGas.Cmp(maxFeePerGasMedium) > 0 {
 		maxFeePerGasMedium = maxPriorityFeePerGas
 	}
 
 	maxFeePerGasHigh := new(big.Int).Mul(maxPriorityFeePerGas, big.NewInt(2))
-	twoTimesBaseFee := new(big.Int).Mul(baseFee, big.NewInt(2))
-	if twoTimesBaseFee.Cmp(maxFeePerGasHigh) > 0 {
-		maxFeePerGasHigh = twoTimesBaseFee
-	}
+	//	twoTimesBaseFee := new(big.Int).Mul(baseFee, big.NewInt(2))
+	//if twoTimesBaseFee.Cmp(maxFeePerGasHigh) > 0 {
+	//	maxFeePerGasHigh = twoTimesBaseFee
+	//}
 
 	return &SuggestedFees{
 		GasPrice:             weiToGwei(gasPrice),
-		BaseFee:              weiToGwei(baseFee),
+		//BaseFee:              weiToGwei(baseFee),
 		MaxPriorityFeePerGas: weiToGwei(maxPriorityFeePerGas),
 		MaxFeePerGasLow:      weiToGwei(perc10),
 		MaxFeePerGasMedium:   weiToGwei(maxFeePerGasMedium),

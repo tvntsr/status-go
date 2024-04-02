@@ -11,8 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/status-im/status-go/account"
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/services/wallet/bridge"
@@ -113,7 +111,7 @@ type MultiTransactionCommand struct {
 
 type MultiTransactionCommandResult struct {
 	ID     int64                   `json:"id"`
-	Hashes map[uint64][]types.Hash `json:"hashes"`
+	Hashes map[uint64][]transactions.Hash `json:"hashes"`
 }
 
 type TransactionIdentity struct {
@@ -124,7 +122,7 @@ type TransactionIdentity struct {
 
 type TxResponse struct {
 	KeyUID        string                  `json:"keyUid,omitempty"`
-	Address       types.Address           `json:"address,omitempty"`
+	Address       transactions.Address           `json:"address,omitempty"`
 	AddressPath   string                  `json:"addressPath,omitempty"`
 	SignOnKeycard bool                    `json:"signOnKeycard,omitempty"`
 	ChainID       uint64                  `json:"chainId,omitempty"`
@@ -134,19 +132,19 @@ type TxResponse struct {
 	TxHash        common.Hash             `json:"txHash,omitempty"`
 }
 
-func (tm *TransactionManager) SignMessage(message types.HexBytes, address common.Address, password string) (string, error) {
-	selectedAccount, err := tm.gethManager.VerifyAccountPassword(tm.config.KeyStoreDir, address.Hex(), password)
-	if err != nil {
-		return "", err
-	}
+func (tm *TransactionManager) SignMessage(message transactions.HexBytes, address common.Address, password string) (string, error) {
+	// selectedAccount, err := tm.gethManager.VerifyAccountPassword(tm.config.KeyStoreDir, address.Hex(), password)
+	// if err != nil {
+	 	return "", nil
+	// }
 
-	signature, err := crypto.Sign(message[:], selectedAccount.PrivateKey)
+	// signature, err := crypto.Sign(message[:], selectedAccount.PrivateKey)
 
-	return types.EncodeHex(signature), err
+	// return types.EncodeHex(signature), err
 }
 
 func (tm *TransactionManager) BuildTransaction(chainID uint64, sendArgs transactions.SendTxArgs) (response *TxResponse, err error) {
-	account, err := tm.accountsDB.GetAccountByAddress(sendArgs.From)
+	account, err := tm.accountsDB.GetAccountByAddress(accounts.Address(sendArgs.From))
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve account: %w", err)
 	}
@@ -194,7 +192,7 @@ func (tm *TransactionManager) BuildTransaction(chainID uint64, sendArgs transact
 
 	return &TxResponse{
 		KeyUID:        account.KeyUID,
-		Address:       account.Address,
+		Address:       transactions.Address(account.Address),
 		AddressPath:   account.Path,
 		SignOnKeycard: kp.MigratedToKeycard(),
 		ChainID:       chainID,
@@ -209,19 +207,19 @@ func (tm *TransactionManager) BuildRawTransaction(chainID uint64, sendArgs trans
 		return nil, err
 	}
 
-	data, err := tx.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+	// data, err := tx.MarshalBinary()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return &TxResponse{
 		ChainID: chainID,
 		TxArgs:  sendArgs,
-		RawTx:   types.EncodeHex(data),
+		//RawTx:   types.EncodeHex(data),
 		TxHash:  tx.Hash(),
 	}, nil
 }
 
-func (tm *TransactionManager) SendTransactionWithSignature(chainID uint64, txType transactions.PendingTrxType, sendArgs transactions.SendTxArgs, signature []byte) (hash types.Hash, err error) {
+func (tm *TransactionManager) SendTransactionWithSignature(chainID uint64, txType transactions.PendingTrxType, sendArgs transactions.SendTxArgs, signature []byte) (hash transactions.Hash, err error) {
 	return tm.transactor.BuildTransactionAndSendWithSignature(chainID, sendArgs, signature)
 }

@@ -1,11 +1,7 @@
-# syntax=docker/dockerfile:1
-
 FROM tinygo/tinygo:0.30.0
 
-#RUN tinygo --help
-
 # Set destination for COPY
-WORKDIR /home/tinygo/app
+WORKDIR /app
 
 # Copy the source code.
 COPY . .
@@ -18,11 +14,16 @@ RUN sudo mv tinygo/net /usr/local/tinygo/src/
 
 RUN sudo cp tinygo/os/*.go /usr/local/tinygo/src/os/
 
+ARG TARGET=wasm #wasi
+
 # Build
-#RUN GOOS=js GOARCH=wasm go build -o build/bin/libstatus.wasm ./build/bin/statusgo-lib
-RUN mkdir -p build/wasm/statusgo-wasm
+RUN CGO_ENABLED=0 /usr/local/tinygo/bin/tinygo build --no-debug -p 24 -interp-timeout=60m -target=$TARGET -tags "gowaku_no_rln wasm" -o ~/libwallet.wasm ./wasm/wallet/
+RUN ls -l ~/libwallet.wasm
+RUN echo "Build target $TARGET"
 
-RUN make statusgo-library-wasmt
+RUN cp /usr/local/tinygo/targets/wasm_exec.js /home/tinygo/
+RUN cp /app/webtest/* /home/tinygo/ 
 
+WORKDIR /home/tinygo
 # Run
-CMD [bash0]
+CMD go run server.go

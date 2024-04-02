@@ -8,15 +8,20 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/status-im/status-go/account"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/services/wallet/token"
 	"github.com/status-im/status-go/transactions"
 )
 
+const AddressLength = 20
+type Address [AddressLength]byte
+type HexBytes []byte
+const HashLength = 32
+type Hash [HashLength]byte
+
 const IncreaseEstimatedGasFactor = 1.1
 
-func getSigner(chainID uint64, from types.Address, verifiedAccount *account.SelectedExtKey) bind.SignerFn {
+func getSigner(chainID uint64, from  Address, verifiedAccount *account.SelectedExtKey) bind.SignerFn {
 	return func(addr common.Address, tx *ethTypes.Transaction) (*ethTypes.Transaction, error) {
 		s := ethTypes.NewLondonSigner(new(big.Int).SetUint64(chainID))
 		return ethTypes.SignTx(tx, s, verifiedAccount.AccountKey.PrivateKey)
@@ -49,52 +54,52 @@ func (t *TransactionBridge) Value() *big.Int {
 	return big.NewInt(0)
 }
 
-func (t *TransactionBridge) From() types.Address {
+func (t *TransactionBridge) From()  Address {
 	if t.TransferTx != nil && t.TransferTx.To != nil {
-		return t.TransferTx.From
+		return Address(t.TransferTx.From)
 	} else if t.HopTx != nil {
-		return t.HopTx.From
+		return Address(t.HopTx.From)
 	} else if t.CbridgeTx != nil {
-		return t.CbridgeTx.From
+		return Address(t.CbridgeTx.From)
 	} else if t.ERC721TransferTx != nil {
-		return t.ERC721TransferTx.From
+		return Address(t.ERC721TransferTx.From)
 	} else if t.ERC1155TransferTx != nil {
-		return t.ERC1155TransferTx.From
+		return Address(t.ERC1155TransferTx.From)
 	}
 
-	return types.HexToAddress("0x0")
+	return Address{}
 }
 
-func (t *TransactionBridge) To() types.Address {
+func (t *TransactionBridge) To()  Address {
 	if t.TransferTx != nil && t.TransferTx.To != nil {
-		return *t.TransferTx.To
-	} else if t.HopTx != nil {
-		return types.Address(t.HopTx.Recipient)
+		return Address(*t.TransferTx.To)
+	} else  if t.HopTx != nil {
+		return Address(t.HopTx.Recipient)
 	} else if t.CbridgeTx != nil {
-		return types.Address(t.HopTx.Recipient)
+		return Address(t.HopTx.Recipient)
 	} else if t.ERC721TransferTx != nil {
-		return types.Address(t.ERC721TransferTx.Recipient)
+		return Address(t.ERC721TransferTx.Recipient)
 	} else if t.ERC1155TransferTx != nil {
-		return types.Address(t.ERC1155TransferTx.Recipient)
+		return  Address(t.ERC1155TransferTx.Recipient)
 	}
 
-	return types.HexToAddress("0x0")
+	return Address{}
 }
 
-func (t *TransactionBridge) Data() types.HexBytes {
+func (t *TransactionBridge) Data()  HexBytes {
 	if t.TransferTx != nil && t.TransferTx.To != nil {
-		return t.TransferTx.Data
+		return HexBytes(t.TransferTx.Data)
 	} else if t.HopTx != nil {
-		return types.HexBytes("")
+		return  HexBytes("")
 	} else if t.CbridgeTx != nil {
-		return types.HexBytes("")
+		return  HexBytes("")
 	} else if t.ERC721TransferTx != nil {
-		return types.HexBytes("")
+		return  HexBytes("")
 	} else if t.ERC1155TransferTx != nil {
-		return types.HexBytes("")
+		return  HexBytes("")
 	}
 
-	return types.HexBytes("")
+	return  HexBytes("")
 }
 
 type Bridge interface {
@@ -103,7 +108,7 @@ type Bridge interface {
 	CalculateFees(from, to *params.Network, token *token.Token, amountIn *big.Int, nativeTokenPrice, tokenPrice float64, gasPrice *big.Float) (*big.Int, *big.Int, error)
 	EstimateGas(fromNetwork *params.Network, toNetwork *params.Network, from common.Address, to common.Address, token *token.Token, amountIn *big.Int) (uint64, error)
 	CalculateAmountOut(from, to *params.Network, amountIn *big.Int, symbol string) (*big.Int, error)
-	Send(sendArgs *TransactionBridge, verifiedAccount *account.SelectedExtKey) (types.Hash, error)
+	Send(sendArgs *TransactionBridge, verifiedAccount *account.SelectedExtKey) ( Hash, error)
 	GetContractAddress(network *params.Network, token *token.Token) *common.Address
 	BuildTransaction(sendArgs *TransactionBridge) (*ethTypes.Transaction, error)
 }

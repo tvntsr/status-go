@@ -1,4 +1,0 @@
-CREATE TABLE IF NOT EXISTS transport_message_cache (
-  id VARCHAR NOT NULL PRIMARY KEY ON CONFLICT REPLACE,
-  timestamp INT NOT NULL
-  );

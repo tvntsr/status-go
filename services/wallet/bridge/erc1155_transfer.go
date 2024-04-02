@@ -9,12 +9,11 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	 ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/status-im/status-go/account"
 	"github.com/status-im/status-go/contracts/ierc1155"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/services/wallet/token"
@@ -102,40 +101,41 @@ func (s *ERC1155TransferBridge) EstimateGas(fromNetwork *params.Network, toNetwo
 }
 
 func (s *ERC1155TransferBridge) sendOrBuild(sendArgs *TransactionBridge, signerFn bind.SignerFn) (tx *ethTypes.Transaction, err error) {
-	ethClient, err := s.rpcClient.EthClient(sendArgs.ChainID)
+	/*	ethClient, err := s.rpcClient.EthClient(sendArgs.ChainID)
 	if err != nil {
-		return tx, err
-	}
-
-	contract, err := ierc1155.NewIerc1155(common.Address(*sendArgs.ERC1155TransferTx.To), ethClient)
-	if err != nil {
-		return tx, err
-	}
-
-	nonce, err := s.transactor.NextNonce(s.rpcClient, sendArgs.ChainID, sendArgs.ERC1155TransferTx.From)
-	if err != nil {
-		return tx, err
-	}
-
-	argNonce := hexutil.Uint64(nonce)
-	sendArgs.ERC1155TransferTx.Nonce = &argNonce
-	txOpts := sendArgs.ERC1155TransferTx.ToTransactOpts(signerFn)
-	tx, err = contract.SafeTransferFrom(
-		txOpts, common.Address(sendArgs.ERC1155TransferTx.From),
-		sendArgs.ERC1155TransferTx.Recipient,
-		sendArgs.ERC1155TransferTx.TokenID.ToInt(),
-		sendArgs.ERC1155TransferTx.Amount.ToInt(),
-		[]byte{},
-	)
+	*/
 	return tx, err
+	//}
+
+	// contract, err := ierc1155.NewIerc1155(common.Address(*sendArgs.ERC1155TransferTx.To), ethClient)
+	// if err != nil {
+	// 	return tx, err
+	// }
+
+	// nonce, err := s.transactor.NextNonce(s.rpcClient, sendArgs.ChainID, sendArgs.ERC1155TransferTx.From)
+	// if err != nil {
+	// 	return tx, err
+	// }
+
+	// argNonce := hexutil.Uint64(nonce)
+	// sendArgs.ERC1155TransferTx.Nonce = &argNonce
+	// txOpts := sendArgs.ERC1155TransferTx.ToTransactOpts(signerFn)
+	// tx, err = contract.SafeTransferFrom(
+	// 	txOpts, common.Address(sendArgs.ERC1155TransferTx.From),
+	// 	sendArgs.ERC1155TransferTx.Recipient,
+	// 	sendArgs.ERC1155TransferTx.TokenID.ToInt(),
+	// 	sendArgs.ERC1155TransferTx.Amount.ToInt(),
+	// 	[]byte{},
+	// )
+	// return tx, err
 }
 
-func (s *ERC1155TransferBridge) Send(sendArgs *TransactionBridge, verifiedAccount *account.SelectedExtKey) (hash types.Hash, err error) {
-	tx, err := s.sendOrBuild(sendArgs, getSigner(sendArgs.ChainID, sendArgs.ERC1155TransferTx.From, verifiedAccount))
-	if err != nil {
+func (s *ERC1155TransferBridge) Send(sendArgs *TransactionBridge, verifiedAccount *account.SelectedExtKey) (hash transactions.Hash, err error) {
+	//	tx, err := s.sendOrBuild(sendArgs, getSigner(sendArgs.ChainID, sendArgs.ERC1155TransferTx.From, verifiedAccount))
+	//if err != nil {
 		return hash, err
-	}
-	return types.Hash(tx.Hash()), nil
+	//}
+	//return types.Hash(tx.Hash()), nil
 }
 
 func (s *ERC1155TransferBridge) BuildTransaction(sendArgs *TransactionBridge) (*ethTypes.Transaction, error) {

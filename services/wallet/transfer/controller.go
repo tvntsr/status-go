@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	statusaccounts "github.com/status-im/status-go/multiaccounts/accounts"
-	"github.com/status-im/status-go/multiaccounts/settings"
+	//	"github.com/status-im/status-go/multiaccounts/settings"
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/services/accounts/accountsevent"
 	"github.com/status-im/status-go/services/wallet/balance"
@@ -119,21 +119,21 @@ func (c *Controller) CheckRecentHistory(chainIDs []uint64, accounts []common.Add
 		return nil
 	}
 
-	multiaccSettings, err := c.accountsDB.GetSettings()
-	if err != nil {
-		return err
-	}
+	// multiaccSettings, err := c.accountsDB.GetSettings()
+	// if err != nil {
+	// 	return err
+	// }
 
-	omitHistory := multiaccSettings.OmitTransfersHistoryScan
-	if omitHistory {
-		err := c.accountsDB.SaveSettingField(settings.OmitTransfersHistoryScan, false)
-		if err != nil {
-			return err
-		}
-	}
+	// omitHistory := multiaccSettings.OmitTransfersHistoryScan
+	// if omitHistory {
+	// 	err := c.accountsDB.SaveSettingField(settings.OmitTransfersHistoryScan, false)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	c.reactor = NewReactor(c.db, c.blockDAO, c.blockRangesSeqDAO, c.accountsDB, c.TransferFeed, c.transactionManager,
-		c.pendingTxManager, c.tokenManager, c.balanceCacher, omitHistory, c.blockChainState)
+		c.pendingTxManager, c.tokenManager, c.balanceCacher, true /*omitHistory*/, c.blockChainState)
 
 	err = c.reactor.start(chainClients, accounts)
 	if err != nil {

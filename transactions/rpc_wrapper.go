@@ -9,8 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/status-im/status-go/eth-node/types"
-
 	"github.com/status-im/status-go/rpc"
 )
 
@@ -65,11 +63,11 @@ func (w *rpcWrapper) SendRawTransaction(ctx context.Context, rawTx string) error
 // If the transaction was a contract creation use the TransactionReceipt method to get the
 // contract address after the transaction has been mined.
 func (w *rpcWrapper) SendTransaction(ctx context.Context, tx *gethtypes.Transaction) error {
-	data, err := tx.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	return w.SendRawTransaction(ctx, types.EncodeHex(data))
+	// data, err := tx.MarshalBinary()
+	// if err != nil {
+	// 	return err
+	// }
+	return nil //w.SendRawTransaction(ctx, types.EncodeHex(data))
 }
 
 func toCallArg(msg ethereum.CallMsg) interface{} {
@@ -77,9 +75,9 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 		"from": msg.From,
 		"to":   msg.To,
 	}
-	if len(msg.Data) > 0 {
-		arg["data"] = types.HexBytes(msg.Data)
-	}
+	// if len(msg.Data) > 0 {
+	// 	arg["data"] = types.HexBytes(msg.Data)
+	// }
 	if msg.Value != nil {
 		arg["value"] = (*hexutil.Big)(msg.Value)
 	}

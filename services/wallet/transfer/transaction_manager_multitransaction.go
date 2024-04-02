@@ -17,14 +17,14 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/status-go/account"
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
+	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/services/wallet/bridge"
 	wallet_common "github.com/status-im/status-go/services/wallet/common"
 	"github.com/status-im/status-go/services/wallet/walletevent"
 	"github.com/status-im/status-go/signal"
 	"github.com/status-im/status-go/transactions"
 )
+const SignatureLength = 64 + 1 // 64 bytes ECDSA signature + 1 byte recovery id
 
 const multiTransactionColumns = "from_network_id, from_tx_hash, from_address, from_asset, from_amount, to_network_id, to_tx_hash, to_address, to_asset, to_amount, type, cross_tx_id, timestamp"
 const selectMultiTransactionColumns = "COALESCE(from_network_id, 0), from_tx_hash, from_address, from_asset, from_amount, COALESCE(to_network_id, 0), to_tx_hash, to_address, to_asset, to_amount, type, cross_tx_id, timestamp"
@@ -212,7 +212,7 @@ func (tm *TransactionManager) CreateMultiTransactionFromCommand(ctx context.Cont
 
 	multiTransaction.ID = multiTransactionID
 	if password == "" {
-		acc, err := tm.accountsDB.GetAccountByAddress(types.Address(multiTransaction.FromAddress))
+		acc, err := tm.accountsDB.GetAccountByAddress(accounts.Address(multiTransaction.FromAddress))
 		if err != nil {
 			return nil, err
 		}
@@ -276,15 +276,15 @@ func (tm *TransactionManager) ProceedWithTransactionsSignatures(ctx context.Cont
 		if sigDetails.V == "01" {
 			vByte = 1
 		}
-
-		desc.signature = make([]byte, crypto.SignatureLength)
+		
+		 desc.signature = make([]byte, SignatureLength)
 		copy(desc.signature[32-len(rBytes):32], rBytes)
 		copy(desc.signature[64-len(rBytes):64], sBytes)
 		desc.signature[64] = vByte
 	}
 
 	// send transactions
-	hashes := make(map[uint64][]types.Hash)
+	hashes := make(map[uint64][]transactions.Hash)
 	for _, desc := range tm.transactionsForKeycardSingning {
 		hash, err := tm.transactor.AddSignatureToTransactionAndSend(
 			desc.chainID,
@@ -349,7 +349,7 @@ func (tm *TransactionManager) buildTransactions(bridges map[string]bridge.Bridge
 
 func (tm *TransactionManager) sendTransactions(multiTransaction *MultiTransaction,
 	data []*bridge.TransactionBridge, bridges map[string]bridge.Bridge, password string) (
-	map[uint64][]types.Hash, error) {
+	map[uint64][]transactions.Hash, error) {
 
 	log.Info("Making transactions", "multiTransaction", multiTransaction)
 
@@ -358,7 +358,7 @@ func (tm *TransactionManager) sendTransactions(multiTransaction *MultiTransactio
 		return nil, err
 	}
 
-	hashes := make(map[uint64][]types.Hash)
+	hashes := make(map[uint64][]transactions.Hash)
 	for _, tx := range data {
 		if tx.TransferTx != nil {
 			tx.TransferTx.MultiTransactionID = multiTransaction.ID
@@ -385,7 +385,7 @@ func (tm *TransactionManager) sendTransactions(multiTransaction *MultiTransactio
 		if err != nil {
 			return nil, err
 		}
-		hashes[tx.ChainID] = append(hashes[tx.ChainID], hash)
+		hashes[tx.ChainID] = append(hashes[tx.ChainID], transactions.Hash(hash))
 	}
 	return hashes, nil
 }
@@ -469,25 +469,25 @@ func (tm *TransactionManager) GetBridgeDestinationMultiTransaction(ctx context.C
 }
 
 func (tm *TransactionManager) getVerifiedWalletAccount(address, password string) (*account.SelectedExtKey, error) {
-	exists, err := tm.accountsDB.AddressExists(types.HexToAddress(address))
-	if err != nil {
-		log.Error("failed to query db for a given address", "address", address, "error", err)
-		return nil, err
-	}
+	// exists, err := tm.accountsDB.AddressExists(types.HexToAddress(address))
+	// if err != nil {
+	// 	log.Error("failed to query db for a given address", "address", address, "error", err)
+	// 	return nil, err
+	// }
 
-	if !exists {
-		log.Error("failed to get a selected account", "err", transactions.ErrInvalidTxSender)
-		return nil, transactions.ErrAccountDoesntExist
-	}
+	// if !exists {
+	// 	log.Error("failed to get a selected account", "err", transactions.ErrInvalidTxSender)
+	// 	return nil, transactions.ErrAccountDoesntExist
+	// }
 
-	key, err := tm.gethManager.VerifyAccountPassword(tm.config.KeyStoreDir, address, password)
-	if err != nil {
-		log.Error("failed to verify account", "account", address, "error", err)
-		return nil, err
-	}
+	// key, err := tm.gethManager.VerifyAccountPassword(tm.config.KeyStoreDir, address, password)
+	// if err != nil {
+	// 	log.Error("failed to verify account", "account", address, "error", err)
+	// 	return nil, err
+	// }
 
 	return &account.SelectedExtKey{
-		Address:    key.Address,
-		AccountKey: key,
+		//Address:    key.Address,
+		//AccountKey: key,
 	}, nil
 }

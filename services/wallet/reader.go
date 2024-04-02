@@ -2,23 +2,18 @@ package wallet
 
 import (
 	"context"
-	"math"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/status-go/multiaccounts/accounts"
-	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
-	"github.com/status-im/status-go/services/wallet/async"
 	"github.com/status-im/status-go/services/wallet/community"
 	"github.com/status-im/status-go/services/wallet/market"
-	"github.com/status-im/status-go/services/wallet/thirdparty"
 	"github.com/status-im/status-go/services/wallet/token"
 	"github.com/status-im/status-go/services/wallet/transfer"
 	"github.com/status-im/status-go/services/wallet/walletevent"
@@ -280,186 +275,187 @@ func (r *Reader) FetchOrGetCachedWalletBalances(ctx context.Context, addresses [
 }
 
 func (r *Reader) getWalletTokenBalances(ctx context.Context, addresses []common.Address, updateBalances bool) (map[common.Address][]Token, error) {
-	areTestNetworksEnabled, err := r.accountsDB.GetTestNetworksEnabled()
-	if err != nil {
-		return nil, err
-	}
+	// areTestNetworksEnabled, err := r.accountsDB.GetTestNetworksEnabled()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	networks, err := r.rpcClient.NetworkManager.Get(false)
-	if err != nil {
-		return nil, err
-	}
-	availableNetworks := make([]*params.Network, 0)
-	for _, network := range networks {
-		if network.IsTest != areTestNetworksEnabled {
-			continue
-		}
-		availableNetworks = append(availableNetworks, network)
-	}
+	// networks, err := r.rpcClient.NetworkManager.Get(false)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// availableNetworks := make([]*params.Network, 0)
+	// for _, network := range networks {
+	// 	if network.IsTest != areTestNetworksEnabled {
+	// 		continue
+	// 	}
+	// 	availableNetworks = append(availableNetworks, network)
+	// }
 
-	cachedTokens, err := r.GetCachedWalletTokensWithoutMarketData()
-	if err != nil {
-		return nil, err
-	}
+	// cachedTokens, err := r.GetCachedWalletTokensWithoutMarketData()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	chainIDs := make([]uint64, 0)
-	for _, network := range availableNetworks {
-		chainIDs = append(chainIDs, network.ChainID)
-	}
+	// chainIDs := make([]uint64, 0)
+	// for _, network := range availableNetworks {
+	// 	chainIDs = append(chainIDs, network.ChainID)
+	// }
 
-	allTokens, err := r.tokenManager.GetTokensByChainIDs(chainIDs)
-	if err != nil {
-		return nil, err
-	}
+	// allTokens, err := r.tokenManager.GetTokensByChainIDs(chainIDs)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	for _, network := range availableNetworks {
-		allTokens = append(allTokens, r.tokenManager.ToToken(network))
-	}
+	// for _, network := range availableNetworks {
+	// 	allTokens = append(allTokens, r.tokenManager.ToToken(network))
+	// }
 
-	tokenAddresses := getTokenAddresses(allTokens)
+	// tokenAddresses := getTokenAddresses(allTokens)
 
-	clients, err := r.rpcClient.EthClients(chainIDs)
-	if err != nil {
-		return nil, err
-	}
+	// clients, err := r.rpcClient.EthClients(chainIDs)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	verifiedTokens, unverifiedTokens := splitVerifiedTokens(allTokens)
+	// verifiedTokens, unverifiedTokens := splitVerifiedTokens(allTokens)
 
-	cachedBalancesPerChain := map[common.Address]map[common.Address]map[uint64]string{}
-	updateAnyway := false
-	if !updateBalances {
-	cacheCheck:
-		for _, address := range addresses {
-			if res, ok := cachedTokens[address]; !ok || len(res) == 0 {
-				updateAnyway = true
-				break
-			}
+	// cachedBalancesPerChain := map[common.Address]map[common.Address]map[uint64]string{}
+	// updateAnyway := false
+	// if !updateBalances {
+	// cacheCheck:
+	// 	for _, address := range addresses {
+	// 		if res, ok := cachedTokens[address]; !ok || len(res) == 0 {
+	// 			updateAnyway = true
+	// 			break
+	// 		}
 
-			networkFound := map[uint64]bool{}
-			for _, token := range cachedTokens[address] {
-				for _, chain := range chainIDs {
-					if _, ok := token.BalancesPerChain[chain]; ok {
-						networkFound[chain] = true
-					}
-				}
-			}
+	// 		networkFound := map[uint64]bool{}
+	// 		for _, token := range cachedTokens[address] {
+	// 			for _, chain := range chainIDs {
+	// 				if _, ok := token.BalancesPerChain[chain]; ok {
+	// 					networkFound[chain] = true
+	// 				}
+	// 			}
+	// 		}
 
-			for _, chain := range chainIDs {
-				if !networkFound[chain] {
-					updateAnyway = true
-					break cacheCheck
-				}
-			}
-		}
-	}
+	// 		for _, chain := range chainIDs {
+	// 			if !networkFound[chain] {
+	// 				updateAnyway = true
+	// 				break cacheCheck
+	// 			}
+	// 		}
+	// 	}
+	// }
 
-	if !updateBalances && !updateAnyway {
-		for address, tokens := range cachedTokens {
-			for _, token := range tokens {
-				for _, balance := range token.BalancesPerChain {
-					if _, ok := cachedBalancesPerChain[address]; !ok {
-						cachedBalancesPerChain[address] = map[common.Address]map[uint64]string{}
-					}
-					if _, ok := cachedBalancesPerChain[address][balance.Address]; !ok {
-						cachedBalancesPerChain[address][balance.Address] = map[uint64]string{}
-					}
-					cachedBalancesPerChain[address][balance.Address][balance.ChainID] = balance.RawBalance
-				}
-			}
+	// if !updateBalances && !updateAnyway {
+	// 	for address, tokens := range cachedTokens {
+	// 		for _, token := range tokens {
+	// 			for _, balance := range token.BalancesPerChain {
+	// 				if _, ok := cachedBalancesPerChain[address]; !ok {
+	// 					cachedBalancesPerChain[address] = map[common.Address]map[uint64]string{}
+	// 				}
+	// 				if _, ok := cachedBalancesPerChain[address][balance.Address]; !ok {
+	// 					cachedBalancesPerChain[address][balance.Address] = map[uint64]string{}
+	// 				}
+	// 				cachedBalancesPerChain[address][balance.Address][balance.ChainID] = balance.RawBalance
+	// 			}
+	// 		}
 
-		}
-	}
+	// 	}
+	// }
 
-	var latestBalances map[uint64]map[common.Address]map[common.Address]*hexutil.Big
-	if updateBalances || updateAnyway {
-		latestBalances, err = r.tokenManager.GetBalancesByChain(ctx, clients, addresses, tokenAddresses)
-		if err != nil {
-			for _, client := range clients {
-				client.SetIsConnected(false)
-			}
-			log.Info("tokenManager.GetBalancesByChain error", "err", err)
-			return nil, err
-		}
-	}
+	// var latestBalances map[uint64]map[common.Address]map[common.Address]*hexutil.Big
+	// if updateBalances || updateAnyway {
+	// 	latestBalances, err = r.tokenManager.GetBalancesByChain(ctx, clients, addresses, tokenAddresses)
+	// 	if err != nil {
+	// 		for _, client := range clients {
+	// 			client.SetIsConnected(false)
+	// 		}
+	// 		log.Info("tokenManager.GetBalancesByChain error", "err", err)
+	// 		return nil, err
+	// 	}
+	// }
 
-	result := make(map[common.Address][]Token)
-	dayAgoTimestamp := time.Now().Add(-24 * time.Hour).Unix()
+	// result := make(map[common.Address][]Token)
+	// dayAgoTimestamp := time.Now().Add(-24 * time.Hour).Unix()
 
-	for _, address := range addresses {
-		for _, tokenList := range [][]*token.Token{verifiedTokens, unverifiedTokens} {
-			for symbol, tokens := range getTokenBySymbols(tokenList) {
-				balancesPerChain := make(map[uint64]ChainBalance)
-				decimals := tokens[0].Decimals
-				isVisible := false
-				for _, token := range tokens {
-					var balance *big.Float
-					hexBalance := &big.Int{}
-					if latestBalances != nil {
-						hexBalance = latestBalances[token.ChainID][address][token.Address].ToInt()
-					} else {
-						if cachedRawBalance, ok := cachedBalancesPerChain[address][token.Address][token.ChainID]; ok {
-							hexBalance, _ = new(big.Int).SetString(cachedRawBalance, 10)
-						}
-					}
-					balance = big.NewFloat(0.0)
-					if hexBalance != nil {
-						balance = new(big.Float).Quo(
-							new(big.Float).SetInt(hexBalance),
-							big.NewFloat(math.Pow(10, float64(decimals))),
-						)
-					}
+	// for _, address := range addresses {
+	// 	for _, tokenList := range [][]*token.Token{verifiedTokens, unverifiedTokens} {
+	// 		for symbol, tokens := range getTokenBySymbols(tokenList) {
+	// 			balancesPerChain := make(map[uint64]ChainBalance)
+	// 			decimals := tokens[0].Decimals
+	// 			isVisible := false
+	// 			for _, token := range tokens {
+	// 				var balance *big.Float
+	// 				hexBalance := &big.Int{}
+	// 				if latestBalances != nil {
+	// 					hexBalance = latestBalances[token.ChainID][address][token.Address].ToInt()
+	// 				} else {
+	// 					if cachedRawBalance, ok := cachedBalancesPerChain[address][token.Address][token.ChainID]; ok {
+	// 						hexBalance, _ = new(big.Int).SetString(cachedRawBalance, 10)
+	// 					}
+	// 				}
+	// 				balance = big.NewFloat(0.0)
+	// 				if hexBalance != nil {
+	// 					balance = new(big.Float).Quo(
+	// 						new(big.Float).SetInt(hexBalance),
+	// 						big.NewFloat(math.Pow(10, float64(decimals))),
+	// 					)
+	// 				}
 
-					hasError := false
-					if client, ok := clients[token.ChainID]; ok {
-						hasError = err != nil || !client.GetIsConnected()
-					}
-					if !isVisible {
-						isVisible = balance.Cmp(big.NewFloat(0.0)) > 0 || r.isCachedToken(cachedTokens, address, token.Symbol, token.ChainID)
-					}
-					balancesPerChain[token.ChainID] = ChainBalance{
-						RawBalance:     hexBalance.String(),
-						Balance:        balance,
-						Balance1DayAgo: "0",
-						Address:        token.Address,
-						ChainID:        token.ChainID,
-						HasError:       hasError,
-					}
-				}
+	// 				hasError := false
+	// 				if client, ok := clients[token.ChainID]; ok {
+	// 					hasError = err != nil || !client.GetIsConnected()
+	// 				}
+	// 				if !isVisible {
+	// 					isVisible = balance.Cmp(big.NewFloat(0.0)) > 0 || r.isCachedToken(cachedTokens, address, token.Symbol, token.ChainID)
+	// 				}
+	// 				balancesPerChain[token.ChainID] = ChainBalance{
+	// 					RawBalance:     hexBalance.String(),
+	// 					Balance:        balance,
+	// 					Balance1DayAgo: "0",
+	// 					Address:        token.Address,
+	// 					ChainID:        token.ChainID,
+	// 					HasError:       hasError,
+	// 				}
+	// 			}
 
-				if !isVisible && !belongsToMandatoryTokens(symbol) {
-					continue
-				}
+	// 			if !isVisible && !belongsToMandatoryTokens(symbol) {
+	// 				continue
+	// 			}
 
-				for _, balance := range balancesPerChain {
-					balance1DayAgo, err := r.tokenManager.GetTokenHistoricalBalance(address, balance.ChainID, symbol, dayAgoTimestamp)
-					if err != nil {
-						return nil, err
-					}
-					if balance1DayAgo != nil {
-						balance.Balance1DayAgo = balance1DayAgo.String()
-						balancesPerChain[balance.ChainID] = balance
-					}
-				}
+	// 			for _, balance := range balancesPerChain {
+	// 				balance1DayAgo, err := r.tokenManager.GetTokenHistoricalBalance(address, balance.ChainID, symbol, dayAgoTimestamp)
+	// 				if err != nil {
+	// 					return nil, err
+	// 				}
+	// 				if balance1DayAgo != nil {
+	// 					balance.Balance1DayAgo = balance1DayAgo.String()
+	// 					balancesPerChain[balance.ChainID] = balance
+	// 				}
+	// 			}
 
-				walletToken := Token{
-					Name:             tokens[0].Name,
-					Symbol:           symbol,
-					BalancesPerChain: balancesPerChain,
-					Decimals:         decimals,
-					PegSymbol:        token.GetTokenPegSymbol(symbol),
-					Verified:         tokens[0].Verified,
-					CommunityData:    tokens[0].CommunityData,
-					Image:            tokens[0].Image,
-				}
+	// 			walletToken := Token{
+	// 				Name:             tokens[0].Name,
+	// 				Symbol:           symbol,
+	// 				BalancesPerChain: balancesPerChain,
+	// 				Decimals:         decimals,
+	// 				PegSymbol:        token.GetTokenPegSymbol(symbol),
+	// 				Verified:         tokens[0].Verified,
+	// 				CommunityData:    tokens[0].CommunityData,
+	// 				Image:            tokens[0].Image,
+	// 			}
 
-				result[address] = append(result[address], walletToken)
-			}
-		}
-	}
+	// 			result[address] = append(result[address], walletToken)
+	// 		}
+	// 	}
+	// }
 
-	r.lastWalletTokenUpdateTimestamp.Store(time.Now().Unix())
+	// r.lastWalletTokenUpdateTimestamp.Store(time.Now().Unix())
 
-	return result, r.persistence.SaveTokens(result)
+	// return result, r.persistence.SaveTokens(result)
+	return nil, fmt.Errorf("Not implemented")
 }
 
 func (r *Reader) GetWalletTokenBalances(ctx context.Context, addresses []common.Address) (map[common.Address][]Token, error) {
@@ -467,196 +463,197 @@ func (r *Reader) GetWalletTokenBalances(ctx context.Context, addresses []common.
 }
 
 func (r *Reader) GetWalletToken(ctx context.Context, addresses []common.Address) (map[common.Address][]Token, error) {
-	areTestNetworksEnabled, err := r.accountsDB.GetTestNetworksEnabled()
-	if err != nil {
-		return nil, err
-	}
+	// areTestNetworksEnabled, err := r.accountsDB.GetTestNetworksEnabled()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	networks, err := r.rpcClient.NetworkManager.Get(false)
-	if err != nil {
-		return nil, err
-	}
-	availableNetworks := make([]*params.Network, 0)
-	for _, network := range networks {
-		if network.IsTest != areTestNetworksEnabled {
-			continue
-		}
-		availableNetworks = append(availableNetworks, network)
-	}
+	// networks, err := r.rpcClient.NetworkManager.Get(false)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// availableNetworks := make([]*params.Network, 0)
+	// for _, network := range networks {
+	// 	if network.IsTest != areTestNetworksEnabled {
+	// 		continue
+	// 	}
+	// 	availableNetworks = append(availableNetworks, network)
+	// }
 
-	cachedTokens, err := r.GetCachedWalletTokensWithoutMarketData()
-	if err != nil {
-		return nil, err
-	}
+	// cachedTokens, err := r.GetCachedWalletTokensWithoutMarketData()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	chainIDs := make([]uint64, 0)
-	for _, network := range availableNetworks {
-		chainIDs = append(chainIDs, network.ChainID)
-	}
+	// chainIDs := make([]uint64, 0)
+	// for _, network := range availableNetworks {
+	// 	chainIDs = append(chainIDs, network.ChainID)
+	// }
 
-	currencies := make([]string, 0)
-	currency, err := r.accountsDB.GetCurrency()
-	if err != nil {
-		return nil, err
-	}
-	currencies = append(currencies, currency)
-	currencies = append(currencies, getFixedCurrencies()...)
-	allTokens, err := r.tokenManager.GetTokensByChainIDs(chainIDs)
+	// currencies := make([]string, 0)
+	// currency, err := r.accountsDB.GetCurrency()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// currencies = append(currencies, currency)
+	// currencies = append(currencies, getFixedCurrencies()...)
+	// allTokens, err := r.tokenManager.GetTokensByChainIDs(chainIDs)
 
-	if err != nil {
-		return nil, err
-	}
-	for _, network := range availableNetworks {
-		allTokens = append(allTokens, r.tokenManager.ToToken(network))
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for _, network := range availableNetworks {
+	// 	allTokens = append(allTokens, r.tokenManager.ToToken(network))
+	// }
 
-	tokenAddresses := getTokenAddresses(allTokens)
+	// tokenAddresses := getTokenAddresses(allTokens)
 
-	clients, err := r.rpcClient.EthClients(chainIDs)
-	if err != nil {
-		return nil, err
-	}
+	// clients, err := r.rpcClient.EthClients(chainIDs)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	balances, err := r.tokenManager.GetBalancesByChain(ctx, clients, addresses, tokenAddresses)
-	if err != nil {
-		for _, client := range clients {
-			client.SetIsConnected(false)
-		}
-		log.Info("tokenManager.GetBalancesByChain error", "err", err)
-		return nil, err
-	}
+	// balances, err := r.tokenManager.GetBalancesByChain(ctx, clients, addresses, tokenAddresses)
+	// if err != nil {
+	// 	for _, client := range clients {
+	// 		client.SetIsConnected(false)
+	// 	}
+	// 	log.Info("tokenManager.GetBalancesByChain error", "err", err)
+	// 	return nil, err
+	// }
 
-	verifiedTokens, unverifiedTokens := splitVerifiedTokens(allTokens)
-	tokenSymbols := make([]string, 0)
-	result := make(map[common.Address][]Token)
+	// verifiedTokens, unverifiedTokens := splitVerifiedTokens(allTokens)
+	// tokenSymbols := make([]string, 0)
+	// result := make(map[common.Address][]Token)
 
-	for _, address := range addresses {
-		for _, tokenList := range [][]*token.Token{verifiedTokens, unverifiedTokens} {
-			for symbol, tokens := range getTokenBySymbols(tokenList) {
-				balancesPerChain := make(map[uint64]ChainBalance)
-				decimals := tokens[0].Decimals
-				isVisible := false
-				for _, token := range tokens {
-					hexBalance := balances[token.ChainID][address][token.Address]
-					balance := big.NewFloat(0.0)
-					if hexBalance != nil {
-						balance = new(big.Float).Quo(
-							new(big.Float).SetInt(hexBalance.ToInt()),
-							big.NewFloat(math.Pow(10, float64(decimals))),
-						)
-					}
-					hasError := false
-					if client, ok := clients[token.ChainID]; ok {
-						hasError = err != nil || !client.GetIsConnected()
-					}
-					if !isVisible {
-						isVisible = balance.Cmp(big.NewFloat(0.0)) > 0 || r.isCachedToken(cachedTokens, address, token.Symbol, token.ChainID)
-					}
-					balancesPerChain[token.ChainID] = ChainBalance{
-						RawBalance: hexBalance.ToInt().String(),
-						Balance:    balance,
-						Address:    token.Address,
-						ChainID:    token.ChainID,
-						HasError:   hasError,
-					}
-				}
+	// for _, address := range addresses {
+	// 	for _, tokenList := range [][]*token.Token{verifiedTokens, unverifiedTokens} {
+	// 		for symbol, tokens := range getTokenBySymbols(tokenList) {
+	// 			balancesPerChain := make(map[uint64]ChainBalance)
+	// 			decimals := tokens[0].Decimals
+	// 			isVisible := false
+	// 			for _, token := range tokens {
+	// 				hexBalance := balances[token.ChainID][address][token.Address]
+	// 				balance := big.NewFloat(0.0)
+	// 				if hexBalance != nil {
+	// 					balance = new(big.Float).Quo(
+	// 						new(big.Float).SetInt(hexBalance.ToInt()),
+	// 						big.NewFloat(math.Pow(10, float64(decimals))),
+	// 					)
+	// 				}
+	// 				hasError := false
+	// 				if client, ok := clients[token.ChainID]; ok {
+	// 					hasError = err != nil || !client.GetIsConnected()
+	// 				}
+	// 				if !isVisible {
+	// 					isVisible = balance.Cmp(big.NewFloat(0.0)) > 0 || r.isCachedToken(cachedTokens, address, token.Symbol, token.ChainID)
+	// 				}
+	// 				balancesPerChain[token.ChainID] = ChainBalance{
+	// 					RawBalance: hexBalance.ToInt().String(),
+	// 					Balance:    balance,
+	// 					Address:    token.Address,
+	// 					ChainID:    token.ChainID,
+	// 					HasError:   hasError,
+	// 				}
+	// 			}
 
-				if !isVisible && !belongsToMandatoryTokens(symbol) {
-					continue
-				}
+	// 			if !isVisible && !belongsToMandatoryTokens(symbol) {
+	// 				continue
+	// 			}
 
-				walletToken := Token{
-					Name:             tokens[0].Name,
-					Symbol:           symbol,
-					BalancesPerChain: balancesPerChain,
-					Decimals:         decimals,
-					PegSymbol:        token.GetTokenPegSymbol(symbol),
-					Verified:         tokens[0].Verified,
-					CommunityData:    tokens[0].CommunityData,
-					Image:            tokens[0].Image,
-				}
+	// 			walletToken := Token{
+	// 				Name:             tokens[0].Name,
+	// 				Symbol:           symbol,
+	// 				BalancesPerChain: balancesPerChain,
+	// 				Decimals:         decimals,
+	// 				PegSymbol:        token.GetTokenPegSymbol(symbol),
+	// 				Verified:         tokens[0].Verified,
+	// 				CommunityData:    tokens[0].CommunityData,
+	// 				Image:            tokens[0].Image,
+	// 			}
 
-				tokenSymbols = append(tokenSymbols, symbol)
-				result[address] = append(result[address], walletToken)
-			}
-		}
-	}
+	// 			tokenSymbols = append(tokenSymbols, symbol)
+	// 			result[address] = append(result[address], walletToken)
+	// 		}
+	// 	}
+	// }
 
-	var (
-		group             = async.NewAtomicGroup(ctx)
-		prices            = map[string]map[string]float64{}
-		tokenDetails      = map[string]thirdparty.TokenDetails{}
-		tokenMarketValues = map[string]thirdparty.TokenMarketValues{}
-	)
+	// var (
+	// 	group             = async.NewAtomicGroup(ctx)
+	// 	prices            = map[string]map[string]float64{}
+	// 	tokenDetails      = map[string]thirdparty.TokenDetails{}
+	// 	tokenMarketValues = map[string]thirdparty.TokenMarketValues{}
+	// )
 
-	group.Add(func(parent context.Context) error {
-		prices, err = r.marketManager.FetchPrices(tokenSymbols, currencies)
-		if err != nil {
-			log.Info("marketManager.FetchPrices err", err)
-		}
-		return nil
-	})
+	// group.Add(func(parent context.Context) error {
+	// 	prices, err = r.marketManager.FetchPrices(tokenSymbols, currencies)
+	// 	if err != nil {
+	// 		log.Info("marketManager.FetchPrices err", err)
+	// 	}
+	// 	return nil
+	// })
 
-	group.Add(func(parent context.Context) error {
-		tokenDetails, err = r.marketManager.FetchTokenDetails(tokenSymbols)
-		if err != nil {
-			log.Info("marketManager.FetchTokenDetails err", err)
-		}
-		return nil
-	})
+	// group.Add(func(parent context.Context) error {
+	// 	tokenDetails, err = r.marketManager.FetchTokenDetails(tokenSymbols)
+	// 	if err != nil {
+	// 		log.Info("marketManager.FetchTokenDetails err", err)
+	// 	}
+	// 	return nil
+	// })
 
-	group.Add(func(parent context.Context) error {
-		tokenMarketValues, err = r.marketManager.FetchTokenMarketValues(tokenSymbols, currency)
-		if err != nil {
-			log.Info("marketManager.FetchTokenMarketValues err", err)
-		}
-		return nil
-	})
+	// group.Add(func(parent context.Context) error {
+	// 	tokenMarketValues, err = r.marketManager.FetchTokenMarketValues(tokenSymbols, currency)
+	// 	if err != nil {
+	// 		log.Info("marketManager.FetchTokenMarketValues err", err)
+	// 	}
+	// 	return nil
+	// })
 
-	select {
-	case <-group.WaitAsync():
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-	err = group.Error()
-	if err != nil {
-		return nil, err
-	}
+	// select {
+	// case <-group.WaitAsync():
+	// case <-ctx.Done():
+	// 	return nil, ctx.Err()
+	// }
+	// err = group.Error()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	for address, tokens := range result {
-		for index, token := range tokens {
-			marketValuesPerCurrency := make(map[string]TokenMarketValues)
-			for _, currency := range currencies {
-				if _, ok := tokenMarketValues[token.Symbol]; !ok {
-					continue
-				}
-				marketValuesPerCurrency[currency] = TokenMarketValues{
-					MarketCap:       tokenMarketValues[token.Symbol].MKTCAP,
-					HighDay:         tokenMarketValues[token.Symbol].HIGHDAY,
-					LowDay:          tokenMarketValues[token.Symbol].LOWDAY,
-					ChangePctHour:   tokenMarketValues[token.Symbol].CHANGEPCTHOUR,
-					ChangePctDay:    tokenMarketValues[token.Symbol].CHANGEPCTDAY,
-					ChangePct24hour: tokenMarketValues[token.Symbol].CHANGEPCT24HOUR,
-					Change24hour:    tokenMarketValues[token.Symbol].CHANGE24HOUR,
-					Price:           prices[token.Symbol][currency],
-					HasError:        !r.marketManager.IsConnected,
-				}
-			}
+	// for address, tokens := range result {
+	// 	for index, token := range tokens {
+	// 		marketValuesPerCurrency := make(map[string]TokenMarketValues)
+	// 		for _, currency := range currencies {
+	// 			if _, ok := tokenMarketValues[token.Symbol]; !ok {
+	// 				continue
+	// 			}
+	// 			marketValuesPerCurrency[currency] = TokenMarketValues{
+	// 				MarketCap:       tokenMarketValues[token.Symbol].MKTCAP,
+	// 				HighDay:         tokenMarketValues[token.Symbol].HIGHDAY,
+	// 				LowDay:          tokenMarketValues[token.Symbol].LOWDAY,
+	// 				ChangePctHour:   tokenMarketValues[token.Symbol].CHANGEPCTHOUR,
+	// 				ChangePctDay:    tokenMarketValues[token.Symbol].CHANGEPCTDAY,
+	// 				ChangePct24hour: tokenMarketValues[token.Symbol].CHANGEPCT24HOUR,
+	// 				Change24hour:    tokenMarketValues[token.Symbol].CHANGE24HOUR,
+	// 				Price:           prices[token.Symbol][currency],
+	// 				HasError:        !r.marketManager.IsConnected,
+	// 			}
+	// 		}
 
-			if _, ok := tokenDetails[token.Symbol]; !ok {
-				continue
-			}
+	// 		if _, ok := tokenDetails[token.Symbol]; !ok {
+	// 			continue
+	// 		}
 
-			result[address][index].Description = tokenDetails[token.Symbol].Description
-			result[address][index].AssetWebsiteURL = tokenDetails[token.Symbol].AssetWebsiteURL
-			result[address][index].BuiltOn = tokenDetails[token.Symbol].BuiltOn
-			result[address][index].MarketValuesPerCurrency = marketValuesPerCurrency
-		}
-	}
+	// 		result[address][index].Description = tokenDetails[token.Symbol].Description
+	// 		result[address][index].AssetWebsiteURL = tokenDetails[token.Symbol].AssetWebsiteURL
+	// 		result[address][index].BuiltOn = tokenDetails[token.Symbol].BuiltOn
+	// 		result[address][index].MarketValuesPerCurrency = marketValuesPerCurrency
+	// 	}
+	// }
 
-	r.lastWalletTokenUpdateTimestamp.Store(time.Now().Unix())
+	// r.lastWalletTokenUpdateTimestamp.Store(time.Now().Unix())
 
-	return result, r.persistence.SaveTokens(result)
+	// return result, r.persistence.SaveTokens(result)
+	return nil, fmt.Errorf("Not implemented")
 }
 
 func (r *Reader) isCachedToken(cachedTokens map[common.Address][]Token, address common.Address, symbol string, chainID uint64) bool {

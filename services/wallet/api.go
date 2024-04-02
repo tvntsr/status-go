@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
+	//	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -15,7 +15,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/status-im/status-go/eth-node/types"
+
+	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc/network"
 	"github.com/status-im/status-go/services/wallet/activity"
@@ -68,12 +69,13 @@ func (api *API) GetWalletToken(ctx context.Context, addresses []common.Address) 
 // GetBalancesByChain return a map with key as chain id and value as map of account address and map of token address and balance
 // [chainID][account][token]balance
 func (api *API) GetBalancesByChain(ctx context.Context, chainIDs []uint64, addresses, tokens []common.Address) (map[uint64]map[common.Address]map[common.Address]*hexutil.Big, error) {
-	clients, err := api.s.rpcClient.EthClients(chainIDs)
-	if err != nil {
-		return nil, err
-	}
+	// clients, err := api.s.rpcClient.EthClients(chainIDs)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return api.s.tokenManager.GetBalancesByChain(ctx, clients, addresses, tokens)
+	// return api.s.tokenManager.GetBalancesByChain(ctx, clients, addresses, tokens)
+	return nil, fmt.Errorf("Not impelemnted")
 }
 
 func (api *API) GetWalletTokenBalances(ctx context.Context, addresses []common.Address) (map[common.Address][]Token, error) {
@@ -90,7 +92,7 @@ func (api *API) GetCachedWalletTokensWithoutMarketData(ctx context.Context) (map
 
 type DerivedAddress struct {
 	Address        common.Address `json:"address"`
-	PublicKey      types.HexBytes `json:"public-key,omitempty"`
+	PublicKey      transactions.HexBytes `json:"public-key,omitempty"`
 	Path           string         `json:"path"`
 	HasActivity    bool           `json:"hasActivity"`
 	AlreadyCreated bool           `json:"alreadyCreated"`
@@ -198,13 +200,13 @@ func (api *API) GetTokens(ctx context.Context, chainID uint64) ([]*token.Token, 
 	return rst, err
 }
 
-// @deprecated
-func (api *API) GetCustomTokens(ctx context.Context) ([]*token.Token, error) {
-	log.Debug("call to get custom tokens")
-	rst, err := api.s.tokenManager.GetCustoms(true)
-	log.Debug("result from database for custom tokens", "len", len(rst))
-	return rst, err
-}
+// // @deprecated
+// func (api *API) GetCustomTokens(ctx context.Context) ([]*token.Token, error) {
+// 	log.Debug("call to get custom tokens")
+// 	rst, err := api.s.tokenManager.GetCustoms(true)
+// 	log.Debug("result from database for custom tokens", "len", len(rst))
+// 	return rst, err
+// }
 
 func (api *API) DiscoverToken(ctx context.Context, chainID uint64, address common.Address) (*token.Token, error) {
 	log.Debug("call to get discover token")
@@ -429,62 +431,66 @@ func (api *API) GetSuggestedRoutes(
 
 // Generates addresses for the provided paths, response doesn't include `HasActivity` value (if you need it check `GetAddressDetails` function)
 func (api *API) GetDerivedAddresses(ctx context.Context, password string, derivedFrom string, paths []string) ([]*DerivedAddress, error) {
-	info, err := api.s.gethManager.AccountsGenerator().LoadAccount(derivedFrom, password)
-	if err != nil {
-		return nil, err
-	}
+	// info, err := api.s.gethManager.AccountsGenerator().LoadAccount(derivedFrom, password)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return api.getDerivedAddresses(info.ID, paths)
+	// return api.getDerivedAddresses(info.ID, paths)
+	return nil, fmt.Errorf("Not implemented")
 }
 
 // Generates addresses for the provided paths derived from the provided mnemonic, response doesn't include `HasActivity` value (if you need it check `GetAddressDetails` function)
 func (api *API) GetDerivedAddressesForMnemonic(ctx context.Context, mnemonic string, paths []string) ([]*DerivedAddress, error) {
-	mnemonicNoExtraSpaces := strings.Join(strings.Fields(mnemonic), " ")
+	return nil, fmt.Errorf("Not implemented")
+	// mnemonicNoExtraSpaces := strings.Join(strings.Fields(mnemonic), " ")
 
-	info, err := api.s.gethManager.AccountsGenerator().ImportMnemonic(mnemonicNoExtraSpaces, "")
-	if err != nil {
-		return nil, err
-	}
+	// info, err := api.s.gethManager.AccountsGenerator().ImportMnemonic(mnemonicNoExtraSpaces, "")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return api.getDerivedAddresses(info.ID, paths)
+	// return api.getDerivedAddresses(info.ID, paths)
 }
 
 // Generates addresses for the provided paths, response doesn't include `HasActivity` value (if you need it check `GetAddressDetails` function)
 func (api *API) getDerivedAddresses(id string, paths []string) ([]*DerivedAddress, error) {
-	addedAccounts, err := api.s.accountsDB.GetActiveAccounts()
-	if err != nil {
-		return nil, err
-	}
+	return nil, fmt.Errorf("Not implemented")
+	// addedAccounts, err := api.s.accountsDB.GetActiveAccounts()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	info, err := api.s.gethManager.AccountsGenerator().DeriveAddresses(id, paths)
-	if err != nil {
-		return nil, err
-	}
+	// info, err := api.s.gethManager.AccountsGenerator().DeriveAddresses(id, paths)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	derivedAddresses := make([]*DerivedAddress, 0)
-	for accPath, acc := range info {
+	// derivedAddresses := make([]*DerivedAddress, 0)
+	// for accPath, acc := range info {
 
-		derivedAddress := &DerivedAddress{
-			Address:   common.HexToAddress(acc.Address),
-			PublicKey: types.Hex2Bytes(acc.PublicKey),
-			Path:      accPath,
-		}
+	// 	derivedAddress := &DerivedAddress{
+	// 		Address:   common.HexToAddress(acc.Address),
+	// 		PublicKey: transactions.Hex2Bytes(acc.PublicKey),
+	// 		Path:      accPath,
+	// 	}
 
-		for _, account := range addedAccounts {
-			if types.Address(derivedAddress.Address) == account.Address {
-				derivedAddress.AlreadyCreated = true
-				break
-			}
-		}
+	// 	for _, account := range addedAccounts {
+	// 		if transactions.Address(derivedAddress.Address) == account.Address {
+	// 			derivedAddress.AlreadyCreated = true
+	// 			break
+	// 		}
+	// 	}
 
-		derivedAddresses = append(derivedAddresses, derivedAddress)
-	}
+	// 	derivedAddresses = append(derivedAddresses, derivedAddress)
+	// }
 
-	return derivedAddresses, nil
+	// return derivedAddresses, nil
 }
 
-func (api *API) AddressExists(ctx context.Context, address types.Address) (bool, error) {
-	return api.s.accountsDB.AddressExists(address)
+func (api *API) AddressExists(ctx context.Context, address transactions.Address) (bool, error) {
+	return false, fmt.Errorf("Not implemented")
+	//	return api.s.accountsDB.AddressExists(address)
 }
 
 // Returns details for the passed address (response doesn't include derivation path)
@@ -492,28 +498,28 @@ func (api *API) GetAddressDetails(ctx context.Context, chainID uint64, address s
 	result := &DerivedAddress{
 		Address: common.HexToAddress(address),
 	}
-	addressExists, err := api.s.accountsDB.AddressExists(types.Address(result.Address))
+	addressExists, err := api.s.accountsDB.AddressExists(accounts.Address(result.Address))
 	if err != nil {
 		return result, err
 	}
 
 	result.AlreadyCreated = addressExists
 
-	chainClient, err := api.s.rpcClient.EthClient(chainID)
-	if err != nil {
-		return result, err
-	}
+	// chainClient, err := api.s.rpcClient.EthClient(chainID)
+	// if err != nil {
+	// 	return result, err
+	// }
 
-	balance, err := api.s.tokenManager.GetChainBalance(ctx, chainClient, result.Address)
-	if err != nil {
-		return result, err
-	}
+	// balance, err := api.s.tokenManager.GetChainBalance(ctx, chainClient, result.Address)
+	// if err != nil {
+	// 	return result, err
+	// }
 
-	result.HasActivity = balance.Cmp(big.NewInt(0)) != 0
+	// result.HasActivity = balance.Cmp(big.NewInt(0)) != 0
 	return result, nil
 }
 
-func (api *API) SignMessage(ctx context.Context, message types.HexBytes, address common.Address, password string) (string, error) {
+func (api *API) SignMessage(ctx context.Context, message transactions.HexBytes, address common.Address, password string) (string, error) {
 	log.Debug("[WalletAPI::SignMessage]", "message", message, "address", address)
 	return api.s.transactionManager.SignMessage(message, address, password)
 }
@@ -546,7 +552,7 @@ func (api *API) BuildRawTransaction(ctx context.Context, chainID uint64, sendTxA
 }
 
 func (api *API) SendTransactionWithSignature(ctx context.Context, chainID uint64, txType transactions.PendingTrxType,
-	sendTxArgsJSON string, signature string) (hash types.Hash, err error) {
+	sendTxArgsJSON string, signature string) (hash transactions.Hash, err error) {
 	log.Debug("[WalletAPI::SendTransactionWithSignature]", "chainID", chainID, "txType", txType, "sendTxArgsJSON", sendTxArgsJSON, "signature", signature)
 	sig, err := hex.DecodeString(signature)
 	if err != nil {

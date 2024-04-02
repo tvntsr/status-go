@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
-	"github.com/status-im/status-go/eth-node/types"
 	wallet_common "github.com/status-im/status-go/services/wallet/common"
 )
 
@@ -25,6 +24,13 @@ var (
 	//ErrAccountDoesntExist is sent when provided sub-account is not stored in database.
 	ErrAccountDoesntExist = errors.New("account doesn't exist")
 )
+
+//"github.com/status-im/status-go/eth-node/types"
+const AddressLength = 20
+type Address [AddressLength]byte
+type HexBytes []byte
+const HashLength = 32
+type Hash [HashLength]byte
 
 // PendingNonceProvider provides information about nonces.
 type PendingNonceProvider interface {
@@ -41,8 +47,8 @@ type GasCalculator interface {
 // This struct is based on go-ethereum's type in internal/ethapi/api.go, but we have freedom
 // over the exact layout of this struct.
 type SendTxArgs struct {
-	From                 types.Address   `json:"from"`
-	To                   *types.Address  `json:"to"`
+	From                 Address   `json:"from"`
+	To                   *Address  `json:"to"`
 	Gas                  *hexutil.Uint64 `json:"gas"`
 	GasPrice             *hexutil.Big    `json:"gasPrice"`
 	Value                *hexutil.Big    `json:"value"`
@@ -52,8 +58,8 @@ type SendTxArgs struct {
 	// We keep both "input" and "data" for backward compatibility.
 	// "input" is a preferred field.
 	// see `vendor/github.com/ethereum/go-ethereum/internal/ethapi/api.go:1107`
-	Input types.HexBytes `json:"input"`
-	Data  types.HexBytes `json:"data"`
+	Input HexBytes `json:"input"`
+	Data  HexBytes `json:"data"`
 
 	// additional data
 	MultiTransactionID wallet_common.MultiTransactionIDType
@@ -77,7 +83,7 @@ func (args SendTxArgs) IsDynamicFeeTx() bool {
 }
 
 // GetInput returns either Input or Data field's value dependent on what is filled.
-func (args SendTxArgs) GetInput() types.HexBytes {
+func (args SendTxArgs) GetInput() HexBytes {
 	if !isNilOrEmpty(args.Input) {
 		return args.Input
 	}
@@ -128,6 +134,6 @@ func (args SendTxArgs) ToTransactOpts(signerFn bind.SignerFn) *bind.TransactOpts
 	}
 }
 
-func isNilOrEmpty(bytes types.HexBytes) bool {
+func isNilOrEmpty(bytes HexBytes) bool {
 	return len(bytes) == 0
 }

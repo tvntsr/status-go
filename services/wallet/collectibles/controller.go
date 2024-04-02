@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/status-go/multiaccounts/accounts"
-	"github.com/status-im/status-go/multiaccounts/settings"
+	//	"github.com/status-im/status-go/multiaccounts/settings"
 	"github.com/status-im/status-go/rpc/network"
 	"github.com/status-im/status-go/services/accounts/accountsevent"
 	"github.com/status-im/status-go/services/accounts/settingsevent"
@@ -189,15 +189,15 @@ func (c *Controller) startPeriodicalOwnershipFetchForAccount(address common.Addr
 		return err
 	}
 
-	areTestNetworksEnabled, err := c.accountsDB.GetTestNetworksEnabled()
-	if err != nil {
-		return err
-	}
+	// areTestNetworksEnabled, err := c.accountsDB.GetTestNetworksEnabled()
+	// if err != nil {
+	// 	return err
+	// }
 
 	for _, network := range networks {
-		if network.IsTest != areTestNetworksEnabled {
-			continue
-		}
+		// if network.IsTest != areTestNetworksEnabled {
+		// 	continue
+		// }
 		chainID := walletCommon.ChainID(network.ChainID)
 
 		err := c.startPeriodicalOwnershipFetchForAccountAndChainID(address, chainID, false)
@@ -365,17 +365,17 @@ func (c *Controller) startSettingsWatcher() {
 		return
 	}
 
-	settingChangeCb := func(setting settings.SettingField, value interface{}) {
-		if setting.Equals(settings.TestNetworksEnabled) || setting.Equals(settings.IsGoerliEnabled) {
-			c.stopPeriodicalOwnershipFetch()
-			err := c.startPeriodicalOwnershipFetch()
-			if err != nil {
-				log.Error("Error starting periodical collectibles fetch", "error", err)
-			}
-		}
-	}
+	// settingChangeCb := func(setting settings.SettingField, value interface{}) {
+	// 	if setting.Equals(settings.TestNetworksEnabled) || setting.Equals(settings.IsGoerliEnabled) {
+	// 		c.stopPeriodicalOwnershipFetch()
+	// 		err := c.startPeriodicalOwnershipFetch()
+	// 		if err != nil {
+	// 			log.Error("Error starting periodical collectibles fetch", "error", err)
+	// 		}
+	// 	}
+	// }
 
-	c.settingsWatcher = settingsevent.NewWatcher(c.settingsFeed, settingChangeCb)
+	// c.settingsWatcher = settingsevent.NewWatcher(c.settingsFeed, settingChangeCb)
 
 	c.settingsWatcher.Start()
 }

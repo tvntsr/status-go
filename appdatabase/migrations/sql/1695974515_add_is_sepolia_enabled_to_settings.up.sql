@@ -1,1 +1,0 @@
-ALTER TABLE settings ADD COLUMN is_sepolia_enabled BOOLEAN NOT NULL DEFAULT FALSE;

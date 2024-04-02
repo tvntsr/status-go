@@ -1,1 +1,0 @@
-ALTER TABLE communities_communities ADD COLUMN muted BOOL NOT NULL DEFAULT FALSE;

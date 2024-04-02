@@ -14,7 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
+	//"github.com/ethereum/go-ethereum/p2p"
 	ethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/status-im/status-go/rpc"
@@ -91,9 +91,9 @@ func NewPendingTxTracker(db *sql.DB, rpcClient rpc.ClientInterface, rpcFilter *r
 		rpcFilter: rpcFilter,
 		log:       log.New("package", "status-go/transactions.PendingTxTracker"),
 	}
-	tm.taskRunner = NewConditionalRepeater(checkInterval, func(ctx context.Context) bool {
-		return tm.fetchAndUpdateDB(ctx)
-	})
+	// tm.taskRunner = NewConditionalRepeater(checkInterval, func(ctx context.Context) bool {
+	// 	return tm.fetchAndUpdateDB(ctx)
+	// })
 	return tm
 }
 
@@ -379,9 +379,9 @@ func (tm *PendingTxTracker) APIs() []ethrpc.API {
 }
 
 // Protocols returns a new protocols list. In this case, there are none.
-func (tm *PendingTxTracker) Protocols() []p2p.Protocol {
-	return []p2p.Protocol{}
-}
+// func (tm *PendingTxTracker) Protocols() []p2p.Protocol {
+// 	return []p2p.Protocol{}
+// }
 
 func (tm *PendingTxTracker) Stop() error {
 	tm.taskRunner.Stop()
@@ -639,14 +639,14 @@ func (tm *PendingTxTracker) addPending(transaction *PendingTransaction) error {
 			Deleted: false,
 		}, []eth.Address{transaction.From, transaction.To}, transaction.Timestamp)
 	}
-	if tm.rpcFilter != nil {
-		tm.rpcFilter.TriggerTransactionSentToUpstreamEvent(&rpcfilters.PendingTxInfo{
-			Hash:    transaction.Hash,
-			Type:    string(transaction.Type),
-			From:    transaction.From,
-			ChainID: uint64(transaction.ChainID),
-		})
-	}
+	// if tm.rpcFilter != nil {
+	// 	tm.rpcFilter.TriggerTransactionSentToUpstreamEvent(&rpcfilters.PendingTxInfo{
+	// 		Hash:    transaction.Hash,
+	// 		Type:    string(transaction.Type),
+	// 		From:    transaction.From,
+	// 		ChainID: uint64(transaction.ChainID),
+	// 	})
+	// }
 	return err
 }
 

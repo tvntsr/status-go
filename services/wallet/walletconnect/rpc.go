@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/services/wallet/transfer"
 	"github.com/status-im/status-go/transactions"
+
+	"github.com/status-im/status-go/multiaccounts/accounts"
 )
 
 // sendTransactionParams instead of transactions.SendTxArgs to allow parsing of hex Uint64 with leading 0 ("0x01") and empty hex value ("0x")
@@ -89,12 +89,12 @@ func (s *Service) buildMessage(request SessionRequest, addressIndex int, message
 		return nil, ErrorInvalidAddressMsgIndex
 	}
 
-	var address types.Address
+	var address transactions.Address
 	if err := json.Unmarshal(request.Params.Request.Params[addressIndex], &address); err != nil {
 		return nil, err
 	}
 
-	account, err := s.accountsDB.GetAccountByAddress(address)
+	account, err := s.accountsDB.GetAccountByAddress(accounts.Address(address))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active account: %w", err)
 	}
@@ -106,11 +106,11 @@ func (s *Service) buildMessage(request SessionRequest, addressIndex int, message
 
 	var hash []byte
 	if !handleTypedData {
-		var dBytes types.HexBytes
+		var dBytes transactions.HexBytes
 		if err := json.Unmarshal(request.Params.Request.Params[messageIndex], &dBytes); err != nil {
 			return nil, err
 		}
-		hash = crypto.TextHash(dBytes)
+		//hash = crypto.TextHash(dBytes)
 	} else {
 		var typedDataJSON string
 		if err := json.Unmarshal(request.Params.Request.Params[messageIndex], &typedDataJSON); err != nil {
@@ -130,9 +130,9 @@ func (s *Service) buildMessage(request SessionRequest, addressIndex int, message
 
 	return &transfer.TxResponse{
 		KeyUID:        account.KeyUID,
-		Address:       account.Address,
+		Address:       transactions.Address(account.Address),
 		AddressPath:   account.Path,
 		SignOnKeycard: kp.MigratedToKeycard(),
-		MessageToSign: types.HexBytes(hash),
+		MessageToSign: transactions.HexBytes(hash),
 	}, nil
 }

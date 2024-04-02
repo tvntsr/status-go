@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/status-go/contracts"
-	nodetypes "github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/rpc/chain"
 	"github.com/status-im/status-go/services/wallet/async"
@@ -160,143 +159,143 @@ var nonceCheckIntervalIterations = 30
 var logsCheckIntervalIterations = 5
 
 func (c *findNewBlocksCommand) Run(parent context.Context) error {
-	mnemonicWasNotShown, err := c.accountsDB.GetMnemonicWasNotShown()
-	if err != nil {
-		return err
-	}
+	// mnemonicWasNotShown, err := c.accountsDB.GetMnemonicWasNotShown()
+	// if err != nil {
+	// 	return err
+	// }
 
-	accountsToCheck := []common.Address{}
-	// accounts which might have outgoing transfers initiated outside
-	// the application, e.g. watch only or restored from mnemonic phrase
-	accountsWithOutsideTransfers := []common.Address{}
+	// accountsToCheck := []common.Address{}
+	// // accounts which might have outgoing transfers initiated outside
+	// // the application, e.g. watch only or restored from mnemonic phrase
+	// accountsWithOutsideTransfers := []common.Address{}
 
-	for _, account := range c.accounts {
-		acc, err := c.accountsDB.GetAccountByAddress(nodetypes.Address(account))
-		if err != nil {
-			return err
-		}
-		if mnemonicWasNotShown {
-			if acc.AddressWasNotShown {
-				log.Info("skip findNewBlocksCommand, mnemonic has not been shown and the address has not been shared yet", "address", account)
-				continue
-			}
-		}
-		if !mnemonicWasNotShown || acc.Type != accounts.AccountTypeGenerated {
-			accountsWithOutsideTransfers = append(accountsWithOutsideTransfers, account)
-		}
+	// for _, account := range c.accounts {
+	// 	acc, err := c.accountsDB.GetAccountByAddress(nodetypes.Address(account))
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if mnemonicWasNotShown {
+	// 		if acc.AddressWasNotShown {
+	// 			log.Info("skip findNewBlocksCommand, mnemonic has not been shown and the address has not been shared yet", "address", account)
+	// 			continue
+	// 		}
+	// 	}
+	// 	if !mnemonicWasNotShown || acc.Type != accounts.AccountTypeGenerated {
+	// 		accountsWithOutsideTransfers = append(accountsWithOutsideTransfers, account)
+	// 	}
 
-		accountsToCheck = append(accountsToCheck, account)
-	}
+	// 	accountsToCheck = append(accountsToCheck, account)
+	// }
 
-	if len(accountsToCheck) == 0 {
-		return nil
-	}
+	// if len(accountsToCheck) == 0 {
+	// 	return nil
+	// }
 
-	headNum, accountsWithDetectedChanges, err := c.detectTransfers(parent, accountsToCheck)
-	if err != nil {
-		log.Error("findNewBlocksCommand error on transfer detection", "error", err, "chain", c.chainClient.NetworkID())
-		return err
-	}
+	// headNum, accountsWithDetectedChanges, err := c.detectTransfers(parent, accountsToCheck)
+	// if err != nil {
+	// 	log.Error("findNewBlocksCommand error on transfer detection", "error", err, "chain", c.chainClient.NetworkID())
+	// 	return err
+	// }
 
-	c.blockChainState.SetLastBlockNumber(c.chainClient.NetworkID(), headNum.Uint64())
+	// c.blockChainState.SetLastBlockNumber(c.chainClient.NetworkID(), headNum.Uint64())
 
-	if len(accountsWithDetectedChanges) != 0 {
-		log.Debug("findNewBlocksCommand detected accounts with changes, proceeding", "accounts", accountsWithDetectedChanges, "from", c.fromBlockNumber)
-		err = c.findAndSaveEthBlocks(parent, c.fromBlockNumber, headNum, accountsToCheck)
-		if err != nil {
-			return err
-		}
-	} else if c.iteration%c.nonceCheckIntervalIterations == 0 && len(accountsWithOutsideTransfers) > 0 {
-		log.Debug("findNewBlocksCommand nonce check", "accounts", accountsWithOutsideTransfers)
-		accountsWithNonceChanges, err := c.detectNonceChange(parent, headNum, accountsWithOutsideTransfers)
-		if err != nil {
-			return err
-		}
+	// if len(accountsWithDetectedChanges) != 0 {
+	// 	log.Debug("findNewBlocksCommand detected accounts with changes, proceeding", "accounts", accountsWithDetectedChanges, "from", c.fromBlockNumber)
+	// 	err = c.findAndSaveEthBlocks(parent, c.fromBlockNumber, headNum, accountsToCheck)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else if c.iteration%c.nonceCheckIntervalIterations == 0 && len(accountsWithOutsideTransfers) > 0 {
+	// 	log.Debug("findNewBlocksCommand nonce check", "accounts", accountsWithOutsideTransfers)
+	// 	accountsWithNonceChanges, err := c.detectNonceChange(parent, headNum, accountsWithOutsideTransfers)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		if len(accountsWithNonceChanges) > 0 {
-			log.Debug("findNewBlocksCommand detected nonce diff", "accounts", accountsWithNonceChanges)
-			for account, from := range accountsWithNonceChanges {
-				err = c.findAndSaveEthBlocks(parent, from, headNum, []common.Address{account})
-				if err != nil {
-					return err
-				}
-			}
-		}
+	// 	if len(accountsWithNonceChanges) > 0 {
+	// 		log.Debug("findNewBlocksCommand detected nonce diff", "accounts", accountsWithNonceChanges)
+	// 		for account, from := range accountsWithNonceChanges {
+	// 			err = c.findAndSaveEthBlocks(parent, from, headNum, []common.Address{account})
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 		}
+	// 	}
 
-		for _, account := range accountsToCheck {
-			if _, ok := accountsWithNonceChanges[account]; ok {
-				continue
-			}
-			err := c.markEthBlockRangeChecked(account, &BlockRange{nil, c.fromBlockNumber, headNum})
-			if err != nil {
-				return err
-			}
-		}
-	}
+	// 	for _, account := range accountsToCheck {
+	// 		if _, ok := accountsWithNonceChanges[account]; ok {
+	// 			continue
+	// 		}
+	// 		err := c.markEthBlockRangeChecked(account, &BlockRange{nil, c.fromBlockNumber, headNum})
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 	}
+	// }
 
-	if len(accountsWithDetectedChanges) != 0 || c.iteration%c.logsCheckIntervalIterations == 0 {
-		from := c.fromBlockNumber
-		if c.logsCheckLastKnownBlock != nil {
-			from = c.logsCheckLastKnownBlock
-		}
-		err = c.findAndSaveTokenBlocks(parent, from, headNum)
-		if err != nil {
-			return err
-		}
-		c.logsCheckLastKnownBlock = headNum
-	}
-	c.fromBlockNumber = headNum
-	c.iteration++
+	// if len(accountsWithDetectedChanges) != 0 || c.iteration%c.logsCheckIntervalIterations == 0 {
+	// 	from := c.fromBlockNumber
+	// 	if c.logsCheckLastKnownBlock != nil {
+	// 		from = c.logsCheckLastKnownBlock
+	// 	}
+	// 	err = c.findAndSaveTokenBlocks(parent, from, headNum)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	c.logsCheckLastKnownBlock = headNum
+	// }
+	// c.fromBlockNumber = headNum
+	// c.iteration++
 
 	return nil
 }
 
 func (c *findNewBlocksCommand) findAndSaveEthBlocks(parent context.Context, fromNum, headNum *big.Int, accounts []common.Address) error {
 	// Check ETH transfers for each account independently
-	mnemonicWasNotShown, err := c.accountsDB.GetMnemonicWasNotShown()
-	if err != nil {
-		return err
-	}
+	// mnemonicWasNotShown, err := c.accountsDB.GetMnemonicWasNotShown()
+	// if err != nil {
+	// 	return err
+	// }
 
-	for _, account := range accounts {
-		if mnemonicWasNotShown {
-			acc, err := c.accountsDB.GetAccountByAddress(nodetypes.Address(account))
-			if err != nil {
-				return err
-			}
-			if acc.AddressWasNotShown {
-				log.Info("skip findNewBlocksCommand, mnemonic has not been shown and the address has not been shared yet", "address", account)
-				continue
-			}
-		}
+	// for _, account := range accounts {
+	// 	if mnemonicWasNotShown {
+	// 		acc, err := c.accountsDB.GetAccountByAddress(nodetypes.Address(account))
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		if acc.AddressWasNotShown {
+	// 			log.Info("skip findNewBlocksCommand, mnemonic has not been shown and the address has not been shared yet", "address", account)
+	// 			continue
+	// 		}
+	// 	}
 
-		log.Debug("start findNewBlocksCommand", "account", account, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "from", fromNum, "to", headNum)
+	// 	log.Debug("start findNewBlocksCommand", "account", account, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "from", fromNum, "to", headNum)
 
-		headers, startBlockNum, err := c.findBlocksWithEthTransfers(parent, account, fromNum, headNum)
-		if err != nil {
-			return err
-		}
+	// 	headers, startBlockNum, err := c.findBlocksWithEthTransfers(parent, account, fromNum, headNum)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		if len(headers) > 0 {
-			log.Debug("findNewBlocksCommand saving headers", "len", len(headers), "lastBlockNumber", headNum,
-				"balance", c.balanceCacher.Cache().GetBalance(account, c.chainClient.NetworkID(), headNum),
-				"nonce", c.balanceCacher.Cache().GetNonce(account, c.chainClient.NetworkID(), headNum))
+	// 	if len(headers) > 0 {
+	// 		log.Debug("findNewBlocksCommand saving headers", "len", len(headers), "lastBlockNumber", headNum,
+	// 			"balance", c.balanceCacher.Cache().GetBalance(account, c.chainClient.NetworkID(), headNum),
+	// 			"nonce", c.balanceCacher.Cache().GetNonce(account, c.chainClient.NetworkID(), headNum))
 
-			err := c.db.SaveBlocks(c.chainClient.NetworkID(), headers)
-			if err != nil {
-				return err
-			}
+	// 		err := c.db.SaveBlocks(c.chainClient.NetworkID(), headers)
+	// 		if err != nil {
+	// 			return err
+	// 		}
 
-			c.blocksFound(headers)
-		}
+	// 		c.blocksFound(headers)
+	// 	}
 
-		err = c.markEthBlockRangeChecked(account, &BlockRange{startBlockNum, fromNum, headNum})
-		if err != nil {
-			return err
-		}
+	// 	err = c.markEthBlockRangeChecked(account, &BlockRange{startBlockNum, fromNum, headNum})
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		log.Debug("end findNewBlocksCommand", "account", account, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "from", fromNum, "to", headNum)
-	}
+	// 	log.Debug("end findNewBlocksCommand", "account", account, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "from", fromNum, "to", headNum)
+	// }
 
 	return nil
 }
@@ -469,7 +468,7 @@ type ERC20BlockRange struct {
 }
 
 func (c *findBlocksCommand) ERC20ScanByBalance(parent context.Context, account common.Address, fromBlock, toBlock *big.Int, token common.Address) ([]ERC20BlockRange, error) {
-	var err error
+	//	var err error
 	batchSize := getErc20BatchSize(c.chainClient.NetworkID())
 	ranges := [][]*big.Int{{fromBlock, toBlock}}
 	foundRanges := []ERC20BlockRange{}
@@ -480,26 +479,26 @@ func (c *findBlocksCommand) ERC20ScanByBalance(parent context.Context, account c
 			from, to := blockRange[0], blockRange[1]
 			fromBalance, ok := cache[from.Int64()]
 			if !ok {
-				fromBalance, err = c.tokenManager.GetTokenBalanceAt(parent, c.chainClient, account, token, from)
-				if err != nil {
-					return nil, err
-				}
+				// fromBalance, err = c.tokenManager.GetTokenBalanceAt(parent, c.chainClient, account, token, from)
+				// if err != nil {
+				// 	return nil, err
+				// }
 
-				if fromBalance == nil {
-					fromBalance = big.NewInt(0)
-				}
+				// if fromBalance == nil {
+				fromBalance = big.NewInt(0)
+				//}
 				cache[from.Int64()] = fromBalance
 			}
 
 			toBalance, ok := cache[to.Int64()]
 			if !ok {
-				toBalance, err = c.tokenManager.GetTokenBalanceAt(parent, c.chainClient, account, token, to)
-				if err != nil {
-					return nil, err
-				}
-				if toBalance == nil {
+				// toBalance, err = c.tokenManager.GetTokenBalanceAt(parent, c.chainClient, account, token, to)
+				// if err != nil {
+				// 	return nil, err
+				// }
+				// if toBalance == nil {
 					toBalance = big.NewInt(0)
-				}
+				//}
 				cache[to.Int64()] = toBalance
 			}
 
@@ -545,24 +544,24 @@ func (c *findBlocksCommand) checkERC20Tail(parent context.Context, account commo
 	clients[c.chainClient.NetworkID()] = c.chainClient
 	atBlocks := make(map[uint64]*big.Int, 1)
 	atBlocks[c.chainClient.NetworkID()] = from
-	balances, err := c.tokenManager.GetBalancesAtByChain(parent, clients, []common.Address{account}, addresses, atBlocks)
-	if err != nil {
-		return nil, err
-	}
+	// balances, err := c.tokenManager.GetBalancesAtByChain(parent, clients, []common.Address{account}, addresses, atBlocks)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	foundRanges := []ERC20BlockRange{}
-	for token, balance := range balances[c.chainClient.NetworkID()][account] {
-		bigintBalance := big.NewInt(balance.ToInt().Int64())
-		if bigintBalance.Cmp(big.NewInt(0)) <= 0 {
-			continue
-		}
-		result, err := c.ERC20ScanByBalance(parent, account, big.NewInt(0), from, token)
-		if err != nil {
-			return nil, err
-		}
+	// for token, balance := range balances[c.chainClient.NetworkID()][account] {
+	// 	bigintBalance := big.NewInt(balance.ToInt().Int64())
+	// 	if bigintBalance.Cmp(big.NewInt(0)) <= 0 {
+	// 		continue
+	// 	}
+	// 	result, err := c.ERC20ScanByBalance(parent, account, big.NewInt(0), from, token)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		foundRanges = append(foundRanges, result...)
-	}
+	// 	foundRanges = append(foundRanges, result...)
+	// }
 
 	uniqRanges := []ERC20BlockRange{}
 	rangesMap := map[string]bool{}
@@ -589,109 +588,109 @@ func (c *findBlocksCommand) checkERC20Tail(parent context.Context, account commo
 func (c *findBlocksCommand) Run(parent context.Context) (err error) {
 	log.Debug("start findBlocksCommand", "accounts", c.accounts, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "from", c.fromBlockNumber, "to", c.toBlockNumber)
 
-	account := c.accounts[0] // For now this command supports only 1 account
-	mnemonicWasNotShown, err := c.accountsDB.GetMnemonicWasNotShown()
-	if err != nil {
-		return err
-	}
+	// account := c.accounts[0] // For now this command supports only 1 account
+	// mnemonicWasNotShown, err := c.accountsDB.GetMnemonicWasNotShown()
+	// if err != nil {
+	// 	return err
+	// }
 
-	if mnemonicWasNotShown {
-		account, err := c.accountsDB.GetAccountByAddress(nodetypes.BytesToAddress(account.Bytes()))
-		if err != nil {
-			return err
-		}
-		if account.AddressWasNotShown {
-			log.Info("skip findBlocksCommand, mnemonic has not been shown and the address has not been shared yet", "address", account)
-			return nil
-		}
-	}
+	// if mnemonicWasNotShown {
+	// 	account, err := c.accountsDB.GetAccountByAddress(nodetypes.BytesToAddress(account.Bytes()))
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if account.AddressWasNotShown {
+	// 		log.Info("skip findBlocksCommand, mnemonic has not been shown and the address has not been shared yet", "address", account)
+	// 		return nil
+	// 	}
+	// }
 
-	rangeSize := big.NewInt(int64(c.defaultNodeBlockChunkSize))
-	from, to := new(big.Int).Set(c.fromBlockNumber), new(big.Int).Set(c.toBlockNumber)
+	// rangeSize := big.NewInt(int64(c.defaultNodeBlockChunkSize))
+	// from, to := new(big.Int).Set(c.fromBlockNumber), new(big.Int).Set(c.toBlockNumber)
 
-	// Limit the range size to DefaultNodeBlockChunkSize
-	if new(big.Int).Sub(to, from).Cmp(rangeSize) > 0 {
-		from.Sub(to, rangeSize)
-	}
+	// // Limit the range size to DefaultNodeBlockChunkSize
+	// if new(big.Int).Sub(to, from).Cmp(rangeSize) > 0 {
+	// 	from.Sub(to, rangeSize)
+	// }
 
-	for {
-		if from.Cmp(to) == 0 {
-			log.Debug("findBlocksCommand empty range", "from", from, "to", to)
-			break
-		}
+	// for {
+	// 	if from.Cmp(to) == 0 {
+	// 		log.Debug("findBlocksCommand empty range", "from", from, "to", to)
+	// 		break
+	// 	}
 
-		var headers []*DBHeader
-		if c.reachedETHHistoryStart {
-			if c.fromBlockNumber.Cmp(zero) == 0 && c.startBlockNumber != nil && c.startBlockNumber.Cmp(zero) == 1 {
-				headers, err = c.checkERC20Tail(parent, account)
-				if err != nil {
-					log.Error("findBlocksCommand checkERC20Tail", "err", err, "account", account, "chain", c.chainClient.NetworkID())
-					break
-				}
-			}
-		} else {
-			headers, err = c.checkRange(parent, from, to)
-			if err != nil {
-				break
-			}
-		}
+	// 	var headers []*DBHeader
+	// 	if c.reachedETHHistoryStart {
+	// 		if c.fromBlockNumber.Cmp(zero) == 0 && c.startBlockNumber != nil && c.startBlockNumber.Cmp(zero) == 1 {
+	// 			headers, err = c.checkERC20Tail(parent, account)
+	// 			if err != nil {
+	// 				log.Error("findBlocksCommand checkERC20Tail", "err", err, "account", account, "chain", c.chainClient.NetworkID())
+	// 				break
+	// 			}
+	// 		}
+	// 	} else {
+	// 		headers, err = c.checkRange(parent, from, to)
+	// 		if err != nil {
+	// 			break
+	// 		}
+	// 	}
 
-		if len(headers) > 0 {
-			log.Debug("findBlocksCommand saving headers", "len", len(headers), "lastBlockNumber", to,
-				"balance", c.balanceCacher.Cache().GetBalance(account, c.chainClient.NetworkID(), to),
-				"nonce", c.balanceCacher.Cache().GetNonce(account, c.chainClient.NetworkID(), to))
+	// 	if len(headers) > 0 {
+	// 		log.Debug("findBlocksCommand saving headers", "len", len(headers), "lastBlockNumber", to,
+	// 			"balance", c.balanceCacher.Cache().GetBalance(account, c.chainClient.NetworkID(), to),
+	// 			"nonce", c.balanceCacher.Cache().GetNonce(account, c.chainClient.NetworkID(), to))
 
-			err = c.db.SaveBlocks(c.chainClient.NetworkID(), headers)
-			if err != nil {
-				break
-			}
+	// 		err = c.db.SaveBlocks(c.chainClient.NetworkID(), headers)
+	// 		if err != nil {
+	// 			break
+	// 		}
 
-			c.blocksFound(headers)
-		}
+	// 		c.blocksFound(headers)
+	// 	}
 
-		if c.reachedETHHistoryStart {
-			err = c.markTokenBlockRangeChecked([]common.Address{account}, big.NewInt(0), to)
-			if err != nil {
-				break
-			}
-			log.Debug("findBlocksCommand reached first ETH transfer and checked erc20 tail", "chain", c.chainClient.NetworkID(), "account", account)
-			break
-		}
+	// 	if c.reachedETHHistoryStart {
+	// 		err = c.markTokenBlockRangeChecked([]common.Address{account}, big.NewInt(0), to)
+	// 		if err != nil {
+	// 			break
+	// 		}
+	// 		log.Debug("findBlocksCommand reached first ETH transfer and checked erc20 tail", "chain", c.chainClient.NetworkID(), "account", account)
+	// 		break
+	// 	}
 
-		err = c.markEthBlockRangeChecked(account, &BlockRange{c.startBlockNumber, c.resFromBlock.Number, to})
-		if err != nil {
-			break
-		}
+	// 	err = c.markEthBlockRangeChecked(account, &BlockRange{c.startBlockNumber, c.resFromBlock.Number, to})
+	// 	if err != nil {
+	// 		break
+	// 	}
 
-		err = c.markTokenBlockRangeChecked([]common.Address{account}, c.resFromBlock.Number, to)
-		if err != nil {
-			break
-		}
+	// 	err = c.markTokenBlockRangeChecked([]common.Address{account}, c.resFromBlock.Number, to)
+	// 	if err != nil {
+	// 		break
+	// 	}
 
-		// if we have found first ETH block and we have not reached the start of ETH history yet
-		if c.startBlockNumber != nil && c.fromBlockNumber.Cmp(from) == -1 {
-			log.Debug("ERC20 tail should be checked", "initial from", c.fromBlockNumber, "actual from", from, "first ETH block", c.startBlockNumber)
-			c.reachedETHHistoryStart = true
-			continue
-		}
+	// 	// if we have found first ETH block and we have not reached the start of ETH history yet
+	// 	if c.startBlockNumber != nil && c.fromBlockNumber.Cmp(from) == -1 {
+	// 		log.Debug("ERC20 tail should be checked", "initial from", c.fromBlockNumber, "actual from", from, "first ETH block", c.startBlockNumber)
+	// 		c.reachedETHHistoryStart = true
+	// 		continue
+	// 	}
 
-		if c.startBlockNumber != nil && c.startBlockNumber.Cmp(from) >= 0 {
-			log.Debug("Checked all ranges, stop execution", "startBlock", c.startBlockNumber, "from", from, "to", to)
-			break
-		}
+	// 	if c.startBlockNumber != nil && c.startBlockNumber.Cmp(from) >= 0 {
+	// 		log.Debug("Checked all ranges, stop execution", "startBlock", c.startBlockNumber, "from", from, "to", to)
+	// 		break
+	// 	}
 
-		nextFrom, nextTo := nextRange(c.defaultNodeBlockChunkSize, c.resFromBlock.Number, c.fromBlockNumber)
+	// 	nextFrom, nextTo := nextRange(c.defaultNodeBlockChunkSize, c.resFromBlock.Number, c.fromBlockNumber)
 
-		if nextFrom.Cmp(from) == 0 && nextTo.Cmp(to) == 0 {
-			log.Debug("findBlocksCommand empty next range", "from", from, "to", to)
-			break
-		}
+	// 	if nextFrom.Cmp(from) == 0 && nextTo.Cmp(to) == 0 {
+	// 		log.Debug("findBlocksCommand empty next range", "from", from, "to", to)
+	// 		break
+	// 	}
 
-		from = nextFrom
-		to = nextTo
-	}
+	// 	from = nextFrom
+	// 	to = nextTo
+	// }
 
-	log.Debug("end findBlocksCommand", "account", account, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "err", err)
+	// log.Debug("end findBlocksCommand", "account", account, "chain", c.chainClient.NetworkID(), "noLimit", c.noLimit, "err", err)
 
 	return err
 }

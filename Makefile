@@ -165,12 +165,12 @@ statusgo-library: ##@cross-compile Build status-go as static library for current
 
 
 
-statusgo-library-wasm: ##@cross-compile Build status-go as static library for current platform
+statusgo-library-wasm: ##@cross-compile Build status-go as WASM library
 ## cmd/library/README.md explains the magic incantation behind this
 	mkdir -p build/wasm/statusgo-wasm
 	go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
 	@echo "Building wasm library..."
-	GOOS=js GOARCH=wasm CGO_ENABLED=0 go build \
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 go build -ldflags="-s -w"\
 		-tags "gowaku_no_rln,wasm,js" \
 		-o build/bin/libstatus.wasm \
 		./build/wasm/statusgo-wasm
@@ -178,7 +178,7 @@ statusgo-library-wasm: ##@cross-compile Build status-go as static library for cu
 	@ls -la build/bin/libstatus.*
 
 
-statusgo-library-wasmt: ##@cross-compile Build status-go as static library for current platform
+statusgo-library-wasmt: ##@cross-compile Build status-go as WASM library using tinygo
 ## cmd/library/README.md explains the magic incantation behind this
 	mkdir -p build/wasm/statusgo-wasm
 	go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
@@ -189,6 +189,30 @@ statusgo-library-wasmt: ##@cross-compile Build status-go as static library for c
 		./build/wasm/statusgo-wasm
 	@echo "WASM library built:"
 	@ls -la build/bin/libstatus.*
+
+statusgo-wallet-wasm: ##@cross-compile Build status-go's wallet as WASM library
+## cmd/library/README.md explains the magic incantation behind this
+	#mkdir -p build/wasm/statusgo-wasm
+	#go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
+	@echo "Building wallet wasm library..."
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 go build -ldflags="-s -w"\
+		-tags "gowaku_no_rln,wasm,js" \
+		-o build/bin/libwallet.wasm \
+		./wasm/wallet/
+	@echo "WASM library built:"
+	@ls -la build/bin/libwallet.wasm
+
+statusgo-wallet-wasmt: ##@cross-compile Build status-go's wallet as WASM library
+## cmd/library/README.md explains the magic incantation behind this
+	#mkdir -p build/wasm/statusgo-wasm
+	#go run cmd/library/wasm/*.go > build/wasm/statusgo-wasm/main.go
+	@echo "Building wallet wasm library..."
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 tinygo build -p 24 -interp-timeout=60m -target=wasm \
+		-tags "gowaku_no_rln wasm js" \
+		-o ~/libwallet.wasm \
+		./wasm/wallet/
+	@echo "WASM library built:"
+	@ls -la build/bin/libwallet.wasm
 
 
 statusgo-shared-library: ##@cross-compile Build status-go as shared library for current platform

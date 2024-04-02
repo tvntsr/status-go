@@ -3,8 +3,8 @@ package walletconnect
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strconv"
+	//	"fmt"
+	//	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -193,10 +193,10 @@ func sessionProposalToSupportedChain(caipChains []string, supportsChain func(uin
 
 func caip10Accounts(accounts []*accounts.Account, chains []uint64) []string {
 	addresses := make([]string, 0, len(accounts)*len(chains))
-	for _, acc := range accounts {
-		for _, chainID := range chains {
-			addresses = append(addresses, fmt.Sprintf("%s:%s:%s", SupportedEip155Namespace, strconv.FormatUint(chainID, 10), acc.Address.Hex()))
-		}
-	}
+	// for _, acc := range accounts {
+	// 	for _, chainID := range chains {
+	// 		addresses = append(addresses, fmt.Sprintf("%s:%s:%s", SupportedEip155Namespace, strconv.FormatUint(chainID, 10), acc.Address.Hex()))
+	// 	}
+	// }
 	return addresses
 }

@@ -1,2 +1,0 @@
-ALTER TABLE bookmarks ADD COLUMN deleted_at INT NOT NULL DEFAULT 0;
-

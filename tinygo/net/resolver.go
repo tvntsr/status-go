@@ -97,3 +97,7 @@ type DNSError struct {
 func (e *DNSError) Error() string {
     return "DNS error"
 }
+
+func (ifi *Interface) Addrs() ([]Addr, error){
+    panic("Not implemented")
+}

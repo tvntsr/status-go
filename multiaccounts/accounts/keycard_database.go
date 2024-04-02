@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-
-	"github.com/status-im/status-go/eth-node/types"
-	"github.com/status-im/status-go/protocol/protobuf"
 )
 
 var (
@@ -20,40 +17,40 @@ type Keycard struct {
 	KeycardUID        string          `json:"keycard-uid"`
 	KeycardName       string          `json:"keycard-name"`
 	KeycardLocked     bool            `json:"keycard-locked"`
-	AccountsAddresses []types.Address `json:"accounts-addresses"`
+	AccountsAddresses [] Address `json:"accounts-addresses"`
 	KeyUID            string          `json:"key-uid"`
 	Position          uint64
 }
 
-func (kp *Keycard) ToSyncKeycard() *protobuf.SyncKeycard {
-	kc := &protobuf.SyncKeycard{
-		Uid:      kp.KeycardUID,
-		Name:     kp.KeycardName,
-		Locked:   kp.KeycardLocked,
-		KeyUid:   kp.KeyUID,
-		Position: kp.Position,
-	}
+// func (kp *Keycard) ToSyncKeycard() *protobuf.SyncKeycard {
+// 	kc := &protobuf.SyncKeycard{
+// 		Uid:      kp.KeycardUID,
+// 		Name:     kp.KeycardName,
+// 		Locked:   kp.KeycardLocked,
+// 		KeyUid:   kp.KeyUID,
+// 		Position: kp.Position,
+// 	}
 
-	for _, addr := range kp.AccountsAddresses {
-		kc.Addresses = append(kc.Addresses, addr.Bytes())
-	}
+// 	for _, addr := range kp.AccountsAddresses {
+// 		kc.Addresses = append(kc.Addresses, addr.Bytes())
+// 	}
 
-	return kc
-}
+// 	return kc
+// }
 
-func (kp *Keycard) FromSyncKeycard(kc *protobuf.SyncKeycard) {
-	kp.KeycardUID = kc.Uid
-	kp.KeycardName = kc.Name
-	kp.KeycardLocked = kc.Locked
-	kp.KeyUID = kc.KeyUid
-	kp.Position = kc.Position
+// func (kp *Keycard) FromSyncKeycard(kc *protobuf.SyncKeycard) {
+// 	kp.KeycardUID = kc.Uid
+// 	kp.KeycardName = kc.Name
+// 	kp.KeycardLocked = kc.Locked
+// 	kp.KeyUID = kc.KeyUid
+// 	kp.Position = kc.Position
 
-	for _, addr := range kc.Addresses {
-		kp.AccountsAddresses = append(kp.AccountsAddresses, types.BytesToAddress(addr))
-	}
-}
+// 	for _, addr := range kc.Addresses {
+// 		kp.AccountsAddresses = append(kp.AccountsAddresses,  BytesToAddress(addr))
+// 	}
+// }
 
-func containsAddress(addresses []types.Address, address types.Address) bool {
+func containsAddress(addresses [] Address, address  Address) bool {
 	for _, addr := range addresses {
 		if addr == address {
 			return true
@@ -73,9 +70,9 @@ func (db *Database) processResult(rows *sql.Rows) ([]*Keycard, error) {
 			return nil, err
 		}
 
-		addr := types.Address{}
+		addr :=  Address{}
 		if accAddress.Valid {
-			addr = types.BytesToAddress([]byte(accAddress.String))
+			//addr =  BytesToAddress([]byte(accAddress.String))
 		}
 
 		foundAtIndex := -1
@@ -187,7 +184,7 @@ func (db *Database) GetKeycardByKeycardUID(keycardUID string) (*Keycard, error) 
 	return db.getKeycardByKeycardUID(nil, keycardUID)
 }
 
-func (db *Database) saveOrUpdateKeycardAccounts(tx *sql.Tx, kcUID string, accountsAddresses []types.Address) (err error) {
+func (db *Database) saveOrUpdateKeycardAccounts(tx *sql.Tx, kcUID string, accountsAddresses [] Address) (err error) {
 	if tx == nil {
 		return errKeycardDbTransactionIsNil
 	}
@@ -257,7 +254,7 @@ func (db *Database) deleteAllKeycardsWithKeyUID(tx *sql.Tx, keyUID string) (err 
 	return err
 }
 
-func (db *Database) deleteKeycardAccounts(tx *sql.Tx, kcUID string, accountAddresses []types.Address) (err error) {
+func (db *Database) deleteKeycardAccounts(tx *sql.Tx, kcUID string, accountAddresses [] Address) (err error) {
 	if tx == nil {
 		return errKeycardDbTransactionIsNil
 	}
@@ -391,7 +388,7 @@ func (db *Database) SetKeycardName(kcUID string, kpName string, clock uint64) (e
 	return db.execKeycardUpdateQuery(kcUID, clock, "keycard_name", kpName)
 }
 
-func (db *Database) DeleteKeycardAccounts(kcUID string, accountAddresses []types.Address, clock uint64) (err error) {
+func (db *Database) DeleteKeycardAccounts(kcUID string, accountAddresses [] Address, clock uint64) (err error) {
 	tx, err := db.db.Begin()
 	if err != nil {
 		return err

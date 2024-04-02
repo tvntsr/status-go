@@ -1,1 +1,0 @@
-ALTER TABLE activity_center_notifications ADD COLUMN token_data BLOB DEFAULT NULL;

@@ -8,24 +8,15 @@ import (
 	"math/big"
 	"sort"
 	"strings"
-	"sync"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/status-im/status-go/contracts"
-	"github.com/status-im/status-go/contracts/ierc20"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
-	"github.com/status-im/status-go/services/wallet/async"
 	"github.com/status-im/status-go/services/wallet/bigint"
 	"github.com/status-im/status-go/services/wallet/bridge"
 	walletCommon "github.com/status-im/status-go/services/wallet/common"
 	"github.com/status-im/status-go/services/wallet/token"
-	"github.com/status-im/status-go/transactions"
 )
 
 const EstimateUsername = "RandomUsername"
@@ -71,9 +62,9 @@ func (s SendType) FetchPrices(service *Service, tokenID string) (map[string]floa
 }
 
 func (s SendType) FindToken(service *Service, account common.Address, network *params.Network, tokenID string) *token.Token {
-	if !s.IsCollectiblesTransfer() {
-		return service.tokenManager.FindToken(network, tokenID)
-	}
+	// if !s.IsCollectiblesTransfer() {
+	// 	return service.tokenManager.FindToken(network, tokenID)
+	// }
 
 	parts := strings.Split(tokenID, ":")
 	contractAddress := common.HexToAddress(parts[0])
@@ -143,42 +134,42 @@ func (s SendType) isAvailableFor(network *params.Network) bool {
 }
 
 func (s SendType) EstimateGas(service *Service, network *params.Network, from common.Address, tokenID string) uint64 {
-	tx := transactions.SendTxArgs{
-		From:  (types.Address)(from),
-		Value: (*hexutil.Big)(zero),
-	}
-	if s == ENSRegister {
-		estimate, err := service.ens.API().RegisterEstimate(context.Background(), network.ChainID, tx, EstimateUsername, EstimatePubKey)
-		if err != nil {
-			return 400000
-		}
-		return estimate
-	}
+	// tx := transactions.SendTxArgs{
+	// 	From:  (types.Address)(from),
+	// 	Value: (*hexutil.Big)(zero),
+	// }
+	// if s == ENSRegister {
+	// 	estimate, err := service.ens.API().RegisterEstimate(context.Background(), network.ChainID, tx, EstimateUsername, EstimatePubKey)
+	// 	if err != nil {
+	// 		return 400000
+	// 	}
+	// 	return estimate
+	// }
 
-	if s == ENSRelease {
-		estimate, err := service.ens.API().ReleaseEstimate(context.Background(), network.ChainID, tx, EstimateUsername)
-		if err != nil {
-			return 200000
-		}
-		return estimate
-	}
+	// if s == ENSRelease {
+	// 	estimate, err := service.ens.API().ReleaseEstimate(context.Background(), network.ChainID, tx, EstimateUsername)
+	// 	if err != nil {
+	// 		return 200000
+	// 	}
+	// 	return estimate
+	// }
 
-	if s == ENSSetPubKey {
-		estimate, err := service.ens.API().SetPubKeyEstimate(context.Background(), network.ChainID, tx, fmt.Sprint(EstimateUsername, ".stateofus.eth"), EstimatePubKey)
-		if err != nil {
-			return 400000
-		}
-		return estimate
-	}
+	// if s == ENSSetPubKey {
+	// 	estimate, err := service.ens.API().SetPubKeyEstimate(context.Background(), network.ChainID, tx, fmt.Sprint(EstimateUsername, ".stateofus.eth"), EstimatePubKey)
+	// 	if err != nil {
+	// 		return 400000
+	// 	}
+	// 	return estimate
+	// }
 
-	if s == StickersBuy {
-		packID := &bigint.BigInt{Int: big.NewInt(2)}
-		estimate, err := service.stickers.API().BuyEstimate(context.Background(), network.ChainID, (types.Address)(from), packID)
-		if err != nil {
-			return 400000
-		}
-		return estimate
-	}
+	// if s == StickersBuy {
+	// 	packID := &bigint.BigInt{Int: big.NewInt(2)}
+	// 	estimate, err := service.stickers.API().BuyEstimate(context.Background(), network.ChainID, (types.Address)(from), packID)
+	// 	if err != nil {
+	// 		return 400000
+	// 	}
+	// 	return estimate
+	// }
 
 	return 0
 }
@@ -420,16 +411,16 @@ func newSuggestedRoutes(
 
 func NewRouter(s *Service) *Router {
 	bridges := make(map[string]bridge.Bridge)
-	transfer := bridge.NewTransferBridge(s.rpcClient, s.transactor)
-	erc721Transfer := bridge.NewERC721TransferBridge(s.rpcClient, s.transactor)
-	erc1155Transfer := bridge.NewERC1155TransferBridge(s.rpcClient, s.transactor)
-	cbridge := bridge.NewCbridge(s.rpcClient, s.transactor, s.tokenManager)
-	hop := bridge.NewHopBridge(s.rpcClient, s.transactor, s.tokenManager)
-	bridges[transfer.Name()] = transfer
-	bridges[erc721Transfer.Name()] = erc721Transfer
-	bridges[hop.Name()] = hop
-	bridges[cbridge.Name()] = cbridge
-	bridges[erc1155Transfer.Name()] = erc1155Transfer
+	//	transfer := bridge.NewTransferBridge(s.rpcClient, s.transactor)
+	//erc721Transfer := bridge.NewERC721TransferBridge(s.rpcClient, s.transactor)
+	//erc1155Transfer := bridge.NewERC1155TransferBridge(s.rpcClient, s.transactor)
+	//	cbridge := bridge.NewCbridge(s.rpcClient, s.transactor, s.tokenManager)
+	//	hop := bridge.NewHopBridge(s.rpcClient, s.transactor, s.tokenManager)
+	//	bridges[transfer.Name()] = transfer
+	//bridges[erc721Transfer.Name()] = erc721Transfer
+	//bridges[hop.Name()] = hop
+	//bridges[cbridge.Name()] = cbridge
+	//bridges[erc1155Transfer.Name()] = erc1155Transfer
 
 	return &Router{s, bridges, s.rpcClient}
 }
@@ -458,69 +449,71 @@ func (r *Router) requireApproval(ctx context.Context, sendType SendType, bridge 
 	if token.IsNative() {
 		return false, nil, 0, nil, nil
 	}
-	contractMaker, err := contracts.NewContractMaker(r.rpcClient)
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// contractMaker, err := contracts.NewContractMaker(r.rpcClient)
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
 	bridgeAddress := bridge.GetContractAddress(network, token)
 	if bridgeAddress == nil {
 		return false, nil, 0, nil, nil
 	}
 
-	contract, err := contractMaker.NewERC20(network.ChainID, token.Address)
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// contract, err := contractMaker.NewERC20(network.ChainID, token.Address)
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
-	allowance, err := contract.Allowance(&bind.CallOpts{
-		Context: ctx,
-	}, account, *bridgeAddress)
+	// allowance, err := contract.Allowance(&bind.CallOpts{
+	// 	Context: ctx,
+	// }, account, *bridgeAddress)
 
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
-	if allowance.Cmp(amountIn) >= 0 {
+	// if allowance.Cmp(amountIn) >= 0 {
 		return false, nil, 0, nil, nil
-	}
+	//	}
 
-	ethClient, err := r.rpcClient.EthClient(network.ChainID)
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// ethClient, err := r.rpcClient.EthClient(network.ChainID)
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
-	erc20ABI, err := abi.JSON(strings.NewReader(ierc20.IERC20ABI))
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// erc20ABI, err := abi.JSON(strings.NewReader(ierc20.IERC20ABI))
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
-	data, err := erc20ABI.Pack("approve", bridgeAddress, amountIn)
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// data, err := erc20ABI.Pack("approve", bridgeAddress, amountIn)
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
-	estimate, err := ethClient.EstimateGas(context.Background(), ethereum.CallMsg{
-		From:  account,
-		To:    &token.Address,
-		Value: big.NewInt(0),
-		Data:  data,
-	})
-	if err != nil {
-		return false, nil, 0, nil, err
-	}
+	// estimate, err := ethClient.EstimateGas(context.Background(), ethereum.CallMsg{
+	// 	From:  account,
+	// 	To:    &token.Address,
+	// 	Value: big.NewInt(0),
+	// 	Data:  data,
+	// })
+	// if err != nil {
+	// 	return false, nil, 0, nil, err
+	// }
 
-	return true, amountIn, estimate, bridgeAddress, nil
+	// return true, amountIn, estimate, bridgeAddress, nil
 
 }
 
 func (r *Router) getBalance(ctx context.Context, network *params.Network, token *token.Token, account common.Address) (*big.Int, error) {
-	client, err := r.s.rpcClient.EthClient(network.ChainID)
-	if err != nil {
-		return nil, err
-	}
+	return nil, fmt.Errorf("Not implemented")
+	
+	// client, err := r.s.rpcClient.EthClient(network.ChainID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return r.s.tokenManager.GetBalance(ctx, client, account, token.Address)
+	// return r.s.tokenManager.GetBalance(ctx, client, account, token.Address)
 }
 
 func (r *Router) getERC1155Balance(ctx context.Context, network *params.Network, token *token.Token, account common.Address) (*big.Int, error) {
@@ -560,212 +553,214 @@ func (r *Router) suggestedRoutes(
 	gasFeeMode GasFeeMode,
 	fromLockedAmount map[uint64]*hexutil.Big,
 ) (*SuggestedRoutes, error) {
-	areTestNetworksEnabled, err := r.s.accountsDB.GetTestNetworksEnabled()
-	if err != nil {
-		return nil, err
-	}
+	return nil, fmt.Errorf("Not impemented")
 
-	networks, err := r.s.rpcClient.NetworkManager.Get(false)
-	if err != nil {
-		return nil, err
-	}
+	// areTestNetworksEnabled, err := r.s.accountsDB.GetTestNetworksEnabled()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	prices, err := sendType.FetchPrices(r.s, tokenID)
-	if err != nil {
-		return nil, err
-	}
-	var (
-		group      = async.NewAtomicGroup(ctx)
-		mu         sync.Mutex
-		candidates = make([]*Path, 0)
-	)
-	for networkIdx := range networks {
-		network := networks[networkIdx]
-		if network.IsTest != areTestNetworksEnabled {
-			continue
-		}
+	// networks, err := r.s.rpcClient.NetworkManager.Get(false)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-		if containsNetworkChainID(network, disabledFromChainIDs) {
-			continue
-		}
+	// prices, err := sendType.FetchPrices(r.s, tokenID)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// var (
+	// 	group      = async.NewAtomicGroup(ctx)
+	// 	mu         sync.Mutex
+	// 	candidates = make([]*Path, 0)
+	// )
+	// for networkIdx := range networks {
+	// 	network := networks[networkIdx]
+	// 	if network.IsTest != areTestNetworksEnabled {
+	// 		continue
+	// 	}
 
-		if !sendType.isAvailableFor(network) {
-			continue
-		}
+	// 	if containsNetworkChainID(network, disabledFromChainIDs) {
+	// 		continue
+	// 	}
 
-		token := sendType.FindToken(r.s, addrFrom, network, tokenID)
-		if token == nil {
-			continue
-		}
+	// 	if !sendType.isAvailableFor(network) {
+	// 		continue
+	// 	}
 
-		nativeToken := r.s.tokenManager.FindToken(network, network.NativeCurrencySymbol)
-		if nativeToken == nil {
-			continue
-		}
+	// 	token := sendType.FindToken(r.s, addrFrom, network, tokenID)
+	// 	if token == nil {
+	// 		continue
+	// 	}
 
-		group.Add(func(c context.Context) error {
-			gasFees, err := r.s.feesManager.suggestedFees(ctx, network.ChainID)
-			if err != nil {
-				return err
-			}
+	// 	nativeToken := r.s.tokenManager.FindToken(network, network.NativeCurrencySymbol)
+	// 	if nativeToken == nil {
+	// 		continue
+	// 	}
 
-			// Default value is 1 as in case of erc721 as we built the token we are sure the account owns it
-			balance := big.NewInt(1)
-			if sendType == ERC1155Transfer {
-				balance, err = r.getERC1155Balance(ctx, network, token, addrFrom)
-				if err != nil {
-					return err
-				}
-			} else if sendType != ERC721Transfer {
-				balance, err = r.getBalance(ctx, network, token, addrFrom)
-				if err != nil {
-					return err
-				}
-			}
+	// 	group.Add(func(c context.Context) error {
+	// 		gasFees, err := r.s.feesManager.suggestedFees(ctx, network.ChainID)
+	// 		if err != nil {
+	// 			return err
+	// 		}
 
-			maxAmountIn := (*hexutil.Big)(balance)
-			if amount, ok := fromLockedAmount[network.ChainID]; ok {
-				if amount.ToInt().Cmp(balance) == 1 {
-					return errors.New("locked amount cannot be bigger than balance")
-				}
-				maxAmountIn = amount
-			}
+	// 		// Default value is 1 as in case of erc721 as we built the token we are sure the account owns it
+	// 		balance := big.NewInt(1)
+	// 		if sendType == ERC1155Transfer {
+	// 			balance, err = r.getERC1155Balance(ctx, network, token, addrFrom)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 		} else if sendType != ERC721Transfer {
+	// 			balance, err = r.getBalance(ctx, network, token, addrFrom)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 		}
 
-			nativeBalance, err := r.getBalance(ctx, network, nativeToken, addrFrom)
-			if err != nil {
-				return err
-			}
-			maxFees := gasFees.feeFor(gasFeeMode)
+	// 		maxAmountIn := (*hexutil.Big)(balance)
+	// 		if amount, ok := fromLockedAmount[network.ChainID]; ok {
+	// 			if amount.ToInt().Cmp(balance) == 1 {
+	// 				return errors.New("locked amount cannot be bigger than balance")
+	// 			}
+	// 			maxAmountIn = amount
+	// 		}
 
-			estimatedTime := r.s.feesManager.transactionEstimatedTime(ctx, network.ChainID, maxFees)
-			for _, bridge := range r.bridges {
-				if !sendType.canUseBridge(bridge) {
-					continue
-				}
+	// 		nativeBalance, err := r.getBalance(ctx, network, nativeToken, addrFrom)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		maxFees := gasFees.feeFor(gasFeeMode)
 
-				for _, dest := range networks {
-					if dest.IsTest != areTestNetworksEnabled {
-						continue
-					}
+	// 		estimatedTime := r.s.feesManager.transactionEstimatedTime(ctx, network.ChainID, maxFees)
+	// 		for _, bridge := range r.bridges {
+	// 			if !sendType.canUseBridge(bridge) {
+	// 				continue
+	// 			}
 
-					if !sendType.isAvailableFor(network) {
-						continue
-					}
+	// 			for _, dest := range networks {
+	// 				if dest.IsTest != areTestNetworksEnabled {
+	// 					continue
+	// 				}
 
-					if !sendType.isAvailableBetween(network, dest) {
-						continue
-					}
+	// 				if !sendType.isAvailableFor(network) {
+	// 					continue
+	// 				}
 
-					if len(preferedChainIDs) > 0 && !containsNetworkChainID(dest, preferedChainIDs) {
-						continue
-					}
-					if containsNetworkChainID(dest, disabledToChaindIDs) {
-						continue
-					}
+	// 				if !sendType.isAvailableBetween(network, dest) {
+	// 					continue
+	// 				}
 
-					can, err := bridge.Can(network, dest, token, maxAmountIn.ToInt())
-					if err != nil || !can {
-						continue
-					}
-					bonderFees, tokenFees, err := bridge.CalculateFees(network, dest, token, amountIn, prices["ETH"], prices[tokenID], gasFees.GasPrice)
-					if err != nil {
-						continue
-					}
-					if bonderFees.Cmp(zero) != 0 {
-						if maxAmountIn.ToInt().Cmp(amountIn) >= 0 {
-							if bonderFees.Cmp(amountIn) >= 0 {
-								continue
-							}
-						} else {
-							if bonderFees.Cmp(maxAmountIn.ToInt()) >= 0 {
-								continue
-							}
-						}
-					}
-					gasLimit := uint64(0)
-					if sendType.isTransfer() {
-						gasLimit, err = bridge.EstimateGas(network, dest, addrFrom, addrTo, token, amountIn)
-						if err != nil {
-							continue
-						}
-					} else {
-						gasLimit = sendType.EstimateGas(r.s, network, addrFrom, tokenID)
-					}
+	// 				if len(preferedChainIDs) > 0 && !containsNetworkChainID(dest, preferedChainIDs) {
+	// 					continue
+	// 				}
+	// 				if containsNetworkChainID(dest, disabledToChaindIDs) {
+	// 					continue
+	// 				}
 
-					requiredNativeBalance := new(big.Int).Mul(gweiToWei(maxFees), big.NewInt(int64(gasLimit)))
-					// Removed the required fees from maxAMount in case of native token tx
-					if token.IsNative() {
-						maxAmountIn = (*hexutil.Big)(new(big.Int).Sub(maxAmountIn.ToInt(), requiredNativeBalance))
-					}
-					if nativeBalance.Cmp(requiredNativeBalance) <= 0 {
-						continue
-					}
-					approvalRequired, approvalAmountRequired, approvalGasLimit, approvalContractAddress, err := r.requireApproval(ctx, sendType, bridge, addrFrom, network, token, amountIn)
-					if err != nil {
-						continue
-					}
-					approvalGasFees := new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(approvalGasLimit))))
+	// 				can, err := bridge.Can(network, dest, token, maxAmountIn.ToInt())
+	// 				if err != nil || !can {
+	// 					continue
+	// 				}
+	// 				bonderFees, tokenFees, err := bridge.CalculateFees(network, dest, token, amountIn, prices["ETH"], prices[tokenID], gasFees.GasPrice)
+	// 				if err != nil {
+	// 					continue
+	// 				}
+	// 				if bonderFees.Cmp(zero) != 0 {
+	// 					if maxAmountIn.ToInt().Cmp(amountIn) >= 0 {
+	// 						if bonderFees.Cmp(amountIn) >= 0 {
+	// 							continue
+	// 						}
+	// 					} else {
+	// 						if bonderFees.Cmp(maxAmountIn.ToInt()) >= 0 {
+	// 							continue
+	// 						}
+	// 					}
+	// 				}
+	// 				gasLimit := uint64(0)
+	// 				if sendType.isTransfer() {
+	// 					gasLimit, err = bridge.EstimateGas(network, dest, addrFrom, addrTo, token, amountIn)
+	// 					if err != nil {
+	// 						continue
+	// 					}
+	// 				} else {
+	// 					gasLimit = sendType.EstimateGas(r.s, network, addrFrom, tokenID)
+	// 				}
 
-					approvalGasCost := new(big.Float)
-					approvalGasCost.Mul(
-						approvalGasFees,
-						big.NewFloat(prices["ETH"]),
-					)
+	// 				requiredNativeBalance := new(big.Int).Mul(gweiToWei(maxFees), big.NewInt(int64(gasLimit)))
+	// 				// Removed the required fees from maxAMount in case of native token tx
+	// 				if token.IsNative() {
+	// 					maxAmountIn = (*hexutil.Big)(new(big.Int).Sub(maxAmountIn.ToInt(), requiredNativeBalance))
+	// 				}
+	// 				if nativeBalance.Cmp(requiredNativeBalance) <= 0 {
+	// 					continue
+	// 				}
+	// 				approvalRequired, approvalAmountRequired, approvalGasLimit, approvalContractAddress, err := r.requireApproval(ctx, sendType, bridge, addrFrom, network, token, amountIn)
+	// 				if err != nil {
+	// 					continue
+	// 				}
+	// 				approvalGasFees := new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(approvalGasLimit))))
 
-					gasCost := new(big.Float)
-					gasCost.Mul(
-						new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(gasLimit)))),
-						big.NewFloat(prices["ETH"]),
-					)
+	// 				approvalGasCost := new(big.Float)
+	// 				approvalGasCost.Mul(
+	// 					approvalGasFees,
+	// 					big.NewFloat(prices["ETH"]),
+	// 				)
 
-					tokenFeesAsFloat := new(big.Float).Quo(
-						new(big.Float).SetInt(tokenFees),
-						big.NewFloat(math.Pow(10, float64(token.Decimals))),
-					)
-					tokenCost := new(big.Float)
-					tokenCost.Mul(tokenFeesAsFloat, big.NewFloat(prices[tokenID]))
+	// 				gasCost := new(big.Float)
+	// 				gasCost.Mul(
+	// 					new(big.Float).Mul(gweiToEth(maxFees), big.NewFloat((float64(gasLimit)))),
+	// 					big.NewFloat(prices["ETH"]),
+	// 				)
 
-					cost := new(big.Float)
-					cost.Add(tokenCost, gasCost)
-					cost.Add(cost, approvalGasCost)
-					mu.Lock()
-					candidates = append(candidates, &Path{
-						BridgeName:              bridge.Name(),
-						From:                    network,
-						To:                      dest,
-						MaxAmountIn:             maxAmountIn,
-						AmountIn:                (*hexutil.Big)(zero),
-						AmountOut:               (*hexutil.Big)(zero),
-						GasAmount:               gasLimit,
-						GasFees:                 gasFees,
-						BonderFees:              (*hexutil.Big)(bonderFees),
-						TokenFees:               tokenFeesAsFloat,
-						Cost:                    cost,
-						EstimatedTime:           estimatedTime,
-						ApprovalRequired:        approvalRequired,
-						ApprovalGasFees:         approvalGasFees,
-						ApprovalAmountRequired:  (*hexutil.Big)(approvalAmountRequired),
-						ApprovalContractAddress: approvalContractAddress,
-					})
-					mu.Unlock()
-				}
-			}
-			return nil
-		})
-	}
+	// 				tokenFeesAsFloat := new(big.Float).Quo(
+	// 					new(big.Float).SetInt(tokenFees),
+	// 					big.NewFloat(math.Pow(10, float64(token.Decimals))),
+	// 				)
+	// 				tokenCost := new(big.Float)
+	// 				tokenCost.Mul(tokenFeesAsFloat, big.NewFloat(prices[tokenID]))
 
-	group.Wait()
+	// 				cost := new(big.Float)
+	// 				cost.Add(tokenCost, gasCost)
+	// 				cost.Add(cost, approvalGasCost)
+	// 				mu.Lock()
+	// 				candidates = append(candidates, &Path{
+	// 					BridgeName:              bridge.Name(),
+	// 					From:                    network,
+	// 					To:                      dest,
+	// 					MaxAmountIn:             maxAmountIn,
+	// 					AmountIn:                (*hexutil.Big)(zero),
+	// 					AmountOut:               (*hexutil.Big)(zero),
+	// 					GasAmount:               gasLimit,
+	// 					GasFees:                 gasFees,
+	// 					BonderFees:              (*hexutil.Big)(bonderFees),
+	// 					TokenFees:               tokenFeesAsFloat,
+	// 					Cost:                    cost,
+	// 					EstimatedTime:           estimatedTime,
+	// 					ApprovalRequired:        approvalRequired,
+	// 					ApprovalGasFees:         approvalGasFees,
+	// 					ApprovalAmountRequired:  (*hexutil.Big)(approvalAmountRequired),
+	// 					ApprovalContractAddress: approvalContractAddress,
+	// 				})
+	// 				mu.Unlock()
+	// 			}
+	// 		}
+	// 		return nil
+	// 	})
+	// }
 
-	suggestedRoutes := newSuggestedRoutes(amountIn, candidates, fromLockedAmount)
-	suggestedRoutes.TokenPrice = prices[tokenID]
-	suggestedRoutes.NativeChainTokenPrice = prices["ETH"]
-	for _, path := range suggestedRoutes.Best {
-		amountOut, err := r.bridges[path.BridgeName].CalculateAmountOut(path.From, path.To, (*big.Int)(path.AmountIn), tokenID)
-		if err != nil {
-			continue
-		}
-		path.AmountOut = (*hexutil.Big)(amountOut)
-	}
+	// group.Wait()
 
-	return suggestedRoutes, nil
+	// suggestedRoutes := newSuggestedRoutes(amountIn, candidates, fromLockedAmount)
+	// suggestedRoutes.TokenPrice = prices[tokenID]
+	// suggestedRoutes.NativeChainTokenPrice = prices["ETH"]
+	// for _, path := range suggestedRoutes.Best {
+	// 	amountOut, err := r.bridges[path.BridgeName].CalculateAmountOut(path.From, path.To, (*big.Int)(path.AmountIn), tokenID)
+	// 	if err != nil {
+	// 		continue
+	// 	}
+	// 	path.AmountOut = (*hexutil.Big)(amountOut)
+	// }
+
+	// return suggestedRoutes, nil
 }

@@ -94,20 +94,20 @@ func (s *Service) getAllFiatCurrencyFormats() (FormatPerSymbol, error) {
 }
 
 func (s *Service) fetchAllTokenCurrencyFormats() (FormatPerSymbol, error) {
-	tokens, err := s.tokenManager.GetAllTokens()
-	if err != nil {
-		return nil, err
-	}
+	// tokens, err := s.tokenManager.GetAllTokens()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	tokenPerSymbolMap := make(map[string]bool)
+	//	tokenPerSymbolMap := make(map[string]bool)
 	tokenSymbols := make([]string, 0)
-	for _, t := range tokens {
-		symbol := t.Symbol
-		if !tokenPerSymbolMap[symbol] {
-			tokenPerSymbolMap[symbol] = true
-			tokenSymbols = append(tokenSymbols, symbol)
-		}
-	}
+	// for _, t := range tokens {
+	// 	symbol := t.Symbol
+	// 	if !tokenPerSymbolMap[symbol] {
+	// 		tokenPerSymbolMap[symbol] = true
+	// 		tokenSymbols = append(tokenSymbols, symbol)
+	// 	}
+	// }
 
 	tokenFormats, err := s.currency.FetchTokenCurrencyFormats(tokenSymbols)
 	if err != nil {

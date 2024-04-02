@@ -1,2 +1,0 @@
-ALTER TABLE contacts ADD COLUMN removed BOOLEAN DEFAULT FALSE;
-ALTER TABLE contacts ADD COLUMN last_updated_locally INT DEFAULT 0;

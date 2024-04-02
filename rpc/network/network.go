@@ -231,11 +231,11 @@ func (nm *Manager) GetAll() ([]*params.Network, error) {
 }
 
 func (nm *Manager) Get(onlyEnabled bool) ([]*params.Network, error) {
-	isGoerliEnabled, err := nm.accountsDB.GetIsGoerliEnabled()
+	isGoerliEnabled := false /*, err := nm.accountsDB.GetIsGoerliEnabled()
 	if err != nil {
 		return nil, err
 	}
-
+*/
 	query := newNetworksQuery()
 	if onlyEnabled {
 		query.filterEnabled(true)
@@ -322,5 +322,5 @@ func (nm *Manager) GetConfiguredNetworks() []params.Network {
 }
 
 func (nm *Manager) GetTestNetworksEnabled() (result bool, err error) {
-	return nm.accountsDB.GetTestNetworksEnabled()
+	return false, nil //nm.accountsDB.GetTestNetworksEnabled()
 }

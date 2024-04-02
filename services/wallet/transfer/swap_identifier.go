@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	//	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	uniswapv2 "github.com/status-im/status-go/contracts/uniswapV2"
-	uniswapv3 "github.com/status-im/status-go/contracts/uniswapV3"
+	//	uniswapv2 "github.com/status-im/status-go/contracts/uniswapV2"
+	//	uniswapv3 "github.com/status-im/status-go/contracts/uniswapV3"
 	"github.com/status-im/status-go/rpc/chain"
 	w_common "github.com/status-im/status-go/services/wallet/common"
 	"github.com/status-im/status-go/services/wallet/token"
@@ -21,49 +21,49 @@ const ETHSymbol string = "ETH"
 const WETHSymbol string = "WETH"
 
 func fetchUniswapV2PairInfo(ctx context.Context, client chain.ClientInterface, pairAddress common.Address) (*common.Address, *common.Address, error) {
-	caller, err := uniswapv2.NewUniswapv2Caller(pairAddress, client)
-	if err != nil {
-		return nil, nil, err
-	}
+	// caller, err := uniswapv2.NewUniswapv2Caller(pairAddress, client)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
-	token0Address, err := caller.Token0(&bind.CallOpts{
-		Context: ctx,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
+	// token0Address, err := caller.Token0(&bind.CallOpts{
+	// 	Context: ctx,
+	// })
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
-	token1Address, err := caller.Token1(&bind.CallOpts{
-		Context: ctx,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
+	// token1Address, err := caller.Token1(&bind.CallOpts{
+	// 	Context: ctx,
+	// })
+	// if err != nil {
+	return nil, nil, fmt.Errorf("Not implemented")//err
+	// }
 
-	return &token0Address, &token1Address, nil
+	// return &token0Address, &token1Address, nil
 }
 
 func fetchUniswapV3PoolInfo(ctx context.Context, client chain.ClientInterface, poolAddress common.Address) (*common.Address, *common.Address, error) {
-	caller, err := uniswapv3.NewUniswapv3Caller(poolAddress, client)
-	if err != nil {
-		return nil, nil, err
-	}
+	// caller, err := uniswapv3.NewUniswapv3Caller(poolAddress, client)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
-	token0Address, err := caller.Token0(&bind.CallOpts{
-		Context: ctx,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
+	// token0Address, err := caller.Token0(&bind.CallOpts{
+	// 	Context: ctx,
+	// })
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
-	token1Address, err := caller.Token1(&bind.CallOpts{
-		Context: ctx,
-	})
-	if err != nil {
-		return nil, nil, err
-	}
+	// token1Address, err := caller.Token1(&bind.CallOpts{
+	// 	Context: ctx,
+	// })
+	// if err != nil {
+		return nil, nil, fmt.Errorf("Not implemented")//err
+	// }
 
-	return &token0Address, &token1Address, nil
+	// return &token0Address, &token1Address, nil
 }
 
 func identifyUniswapV2Asset(tokenManager *token.Manager, chainID uint64, amount0 *big.Int, contractAddress0 common.Address, amount1 *big.Int, contractAddress1 common.Address) (token *token.Token, amount *big.Int, err error) {

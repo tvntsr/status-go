@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/extkeys"
 )
 

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/ethereum/go-ethereum/p2p"
+	//	"github.com/ethereum/go-ethereum/p2p"
 	ethRpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/status-im/status-go/account"
 	"github.com/status-im/status-go/params"
@@ -19,10 +19,10 @@ func NewService(rpcClient *rpc.Client, accountsManager *account.GethManager, pen
 		accountsManager,
 		pendingTracker,
 		config,
-		nil,
-		nil,
+		//		nil,
+		//		nil,
 	}
-	service.api = NewAPI(rpcClient, accountsManager, pendingTracker, config, appDb, timeSource, &service.syncUserDetailFunc)
+	//service.api = NewAPI(rpcClient, accountsManager, pendingTracker, config, appDb, timeSource, &service.syncUserDetailFunc)
 	return service
 }
 
@@ -32,13 +32,13 @@ type Service struct {
 	accountsManager    *account.GethManager
 	pendingTracker     *transactions.PendingTxTracker
 	config             *params.NodeConfig
-	api                *API
-	syncUserDetailFunc syncUsernameDetail
+	//	api                *API
+	//	syncUserDetailFunc syncUsernameDetail
 }
 
-func (s *Service) Init(syncUserDetailFunc syncUsernameDetail) {
-	s.syncUserDetailFunc = syncUserDetailFunc
-}
+// func (s *Service) Init(syncUserDetailFunc syncUsernameDetail) {
+// 	s.syncUserDetailFunc = syncUserDetailFunc
+// }
 
 // Start a service.
 func (s *Service) Start() error {
@@ -47,12 +47,13 @@ func (s *Service) Start() error {
 
 // Stop a service.
 func (s *Service) Stop() error {
-	s.api.Stop()
+	//	s.api.Stop()
 	return nil
 }
 
 func (s *Service) API() *API {
-	return s.api
+	//	return s.api
+	return nil
 }
 
 // APIs returns list of available RPC APIs.
@@ -61,12 +62,12 @@ func (s *Service) APIs() []ethRpc.API {
 		{
 			Namespace: "ens",
 			Version:   "0.1.0",
-			Service:   s.api,
+			//	Service:   s.api,
 		},
 	}
 }
 
 // Protocols returns list of p2p protocols.
-func (s *Service) Protocols() []p2p.Protocol {
-	return nil
-}
+// func (s *Service) Protocols() []p2p.Protocol {
+// 	return nil
+// }

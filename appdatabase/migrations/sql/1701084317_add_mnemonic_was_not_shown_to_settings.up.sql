@@ -1,1 +1,0 @@
-ALTER TABLE settings ADD COLUMN mnemonic_was_not_shown BOOLEAN NOT NULL DEFAULT FALSE;

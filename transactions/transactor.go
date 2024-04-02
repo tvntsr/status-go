@@ -1,7 +1,6 @@
 package transactions
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -15,8 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/status-im/status-go/account"
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
+	//"github.com/status-im/status-go/eth-node/crypto"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/services/wallet/bigint"
@@ -64,9 +62,9 @@ func NewTransactor() *Transactor {
 }
 
 // SetPendingTracker sets a pending tracker.
-func (t *Transactor) SetPendingTracker(tracker *PendingTxTracker) {
-	t.pendingTracker = tracker
-}
+// func (t *Transactor) SetPendingTracker(tracker *PendingTxTracker) {
+// 	t.pendingTracker = tracker
+// }
 
 // SetNetworkID selects a correct network.
 func (t *Transactor) SetNetworkID(networkID uint64) {
@@ -79,11 +77,11 @@ func (t *Transactor) NetworkID() uint64 {
 
 // SetRPC sets RPC params, a client and a timeout
 func (t *Transactor) SetRPC(rpcClient *rpc.Client, timeout time.Duration) {
-	t.rpcWrapper = newRPCWrapper(rpcClient, rpcClient.UpstreamChainID)
+	//	t.rpcWrapper = newRPCWrapper(rpcClient, rpcClient.UpstreamChainID)
 	t.rpcCallTimeout = timeout
 }
 
-func (t *Transactor) NextNonce(rpcClient *rpc.Client, chainID uint64, from types.Address) (uint64, error) {
+func (t *Transactor) NextNonce(rpcClient *rpc.Client, chainID uint64, from Address) (uint64, error) {
 	wrapper := newRPCWrapper(rpcClient, chainID)
 	ctx := context.Background()
 	nonce, err := wrapper.PendingNonceAt(ctx, common.Address(from))
@@ -125,12 +123,12 @@ func (t *Transactor) EstimateGas(network *params.Network, from common.Address, t
 }
 
 // SendTransaction is an implementation of eth_sendTransaction. It queues the tx to the sign queue.
-func (t *Transactor) SendTransaction(sendArgs SendTxArgs, verifiedAccount *account.SelectedExtKey) (hash types.Hash, err error) {
+func (t *Transactor) SendTransaction(sendArgs SendTxArgs, verifiedAccount *account.SelectedExtKey) (hash Hash, err error) {
 	hash, err = t.validateAndPropagate(t.rpcWrapper, verifiedAccount, sendArgs)
 	return
 }
 
-func (t *Transactor) SendTransactionWithChainID(chainID uint64, sendArgs SendTxArgs, verifiedAccount *account.SelectedExtKey) (hash types.Hash, err error) {
+func (t *Transactor) SendTransactionWithChainID(chainID uint64, sendArgs SendTxArgs, verifiedAccount *account.SelectedExtKey) (hash Hash, err error) {
 	wrapper := newRPCWrapper(t.rpcWrapper.RPCClient, chainID)
 	hash, err = t.validateAndPropagate(wrapper, verifiedAccount, sendArgs)
 	return
@@ -190,7 +188,7 @@ func createPendingTransactions(from common.Address, symbol string, chainID uint6
 }
 
 func (t *Transactor) sendTransaction(rpcWrapper *rpcWrapper, from common.Address, symbol string,
-	multiTransactionID wallet_common.MultiTransactionIDType, tx *gethtypes.Transaction) (hash types.Hash, err error) {
+	multiTransactionID wallet_common.MultiTransactionIDType, tx *gethtypes.Transaction) (hash Hash, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.rpcCallTimeout)
 	defer cancel()
 
@@ -208,18 +206,18 @@ func (t *Transactor) sendTransaction(rpcWrapper *rpcWrapper, from common.Address
 		}
 	}
 
-	return types.Hash(tx.Hash()), nil
+	return Hash(tx.Hash()), nil
 }
 
 func (t *Transactor) SendTransactionWithSignature(from common.Address, symbol string,
-	multiTransactionID wallet_common.MultiTransactionIDType, tx *gethtypes.Transaction) (hash types.Hash, err error) {
+	multiTransactionID wallet_common.MultiTransactionIDType, tx *gethtypes.Transaction) (hash Hash, err error) {
 	rpcWrapper := newRPCWrapper(t.rpcWrapper.RPCClient, tx.ChainId().Uint64())
 
 	return t.sendTransaction(rpcWrapper, from, symbol, multiTransactionID, tx)
 }
 
 func (t *Transactor) AddSignatureToTransactionAndSend(chainID uint64, from common.Address, symbol string,
-	multiTransactionID wallet_common.MultiTransactionIDType, tx *gethtypes.Transaction, sig []byte) (hash types.Hash, err error) {
+	multiTransactionID wallet_common.MultiTransactionIDType, tx *gethtypes.Transaction, sig []byte) (hash Hash, err error) {
 	txWithSignature, err := t.AddSignatureToTransaction(chainID, tx, sig)
 	if err != nil {
 		return hash, err
@@ -231,13 +229,13 @@ func (t *Transactor) AddSignatureToTransactionAndSend(chainID uint64, from commo
 // BuildTransactionAndSendWithSignature receive a transaction and a signature, serialize them together and propage it to the network.
 // It's different from eth_sendRawTransaction because it receives a signature and not a serialized transaction with signature.
 // Since the transactions is already signed, we assume it was validated and used the right nonce.
-func (t *Transactor) BuildTransactionAndSendWithSignature(chainID uint64, args SendTxArgs, sig []byte) (hash types.Hash, err error) {
-	txWithSignature, err := t.BuildTransactionWithSignature(chainID, args, sig)
-	if err != nil {
-		return hash, err
-	}
+func (t *Transactor) BuildTransactionAndSendWithSignature(chainID uint64, args SendTxArgs, sig []byte) (hash Hash, err error) {
+	//txWithSignature, err := t.BuildTransactionWithSignature(chainID, args, sig)
+	//if err != nil {
+	//	return hash, err
+	//}
 
-	hash, err = t.SendTransactionWithSignature(common.Address(args.From), args.Symbol, args.MultiTransactionID, txWithSignature)
+	//hash, err = t.SendTransactionWithSignature(common.Address(args.From), args.Symbol, args.MultiTransactionID, txWithSignature)
 	return hash, err
 }
 
@@ -268,7 +266,7 @@ func (t *Transactor) BuildTransactionWithSignature(chainID uint64, args SendTxAr
 	return txWithSignature, nil
 }
 
-func (t *Transactor) HashTransaction(args SendTxArgs) (validatedArgs SendTxArgs, hash types.Hash, err error) {
+func (t *Transactor) HashTransaction(args SendTxArgs) (validatedArgs SendTxArgs, hash Hash, err error) {
 	if !args.Valid() {
 		return validatedArgs, hash, ErrInvalidSendTxArgs
 	}
@@ -349,7 +347,7 @@ func (t *Transactor) HashTransaction(args SendTxArgs) (validatedArgs SendTxArgs,
 	validatedArgs.Gas = &newGas
 
 	tx := t.buildTransaction(validatedArgs)
-	hash = types.Hash(gethtypes.NewLondonSigner(chainID).Hash(tx))
+	hash = Hash(gethtypes.NewLondonSigner(chainID).Hash(tx))
 
 	return validatedArgs, hash, nil
 }
@@ -360,9 +358,9 @@ func (t *Transactor) validateAccount(args SendTxArgs, selectedAccount *account.S
 		return account.ErrNoAccountSelected
 	}
 
-	if !bytes.Equal(args.From.Bytes(), selectedAccount.Address.Bytes()) {
-		return ErrInvalidTxSender
-	}
+	// if !bytes.Equal(args.From.Bytes(), selectedAccount.Address.Bytes()) {
+	// 	return ErrInvalidTxSender
+	// }
 
 	return nil
 }
@@ -429,23 +427,23 @@ func (t *Transactor) validateAndBuildTransaction(rpcWrapper *rpcWrapper, args Se
 	return tx, nil
 }
 
-func (t *Transactor) validateAndPropagate(rpcWrapper *rpcWrapper, selectedAccount *account.SelectedExtKey, args SendTxArgs) (hash types.Hash, err error) {
+func (t *Transactor) validateAndPropagate(rpcWrapper *rpcWrapper, selectedAccount *account.SelectedExtKey, args SendTxArgs) (hash Hash, err error) {
 	if err = t.validateAccount(args, selectedAccount); err != nil {
 		return hash, err
 	}
 
-	tx, err := t.validateAndBuildTransaction(rpcWrapper, args)
-	if err != nil {
-		return hash, err
-	}
+	// tx, err := t.validateAndBuildTransaction(rpcWrapper, args)
+	// if err != nil {
+	// 	return hash, err
+	// }
 
-	chainID := big.NewInt(int64(rpcWrapper.chainID))
-	signedTx, err := gethtypes.SignTx(tx, gethtypes.NewLondonSigner(chainID), selectedAccount.AccountKey.PrivateKey)
-	if err != nil {
+	//chainID := big.NewInt(int64(rpcWrapper.chainID))
+	// signedTx, err := gethtypes.SignTx(tx, gethtypes.NewLondonSigner(chainID), selectedAccount.AccountKey.PrivateKey)
+	// if err != nil {
 		return hash, err
-	}
+	// }
 
-	return t.sendTransaction(rpcWrapper, common.Address(args.From), args.Symbol, args.MultiTransactionID, signedTx)
+	// return t.sendTransaction(rpcWrapper, common.Address(args.From), args.Symbol, args.MultiTransactionID, signedTx)
 }
 
 func (t *Transactor) buildTransaction(args SendTxArgs) *gethtypes.Transaction {
@@ -542,6 +540,6 @@ func (t *Transactor) logNewContract(args SendTxArgs, gas uint64, gasPrice *big.I
 		"Gas", gas,
 		"GasPrice", gasPrice,
 		"Value", value,
-		"Contract address", crypto.CreateAddress(args.From, nonce),
+		//		"Contract address", crypto.CreateAddress(args.From, nonce),
 	)
 }

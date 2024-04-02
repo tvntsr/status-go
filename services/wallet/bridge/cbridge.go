@@ -16,10 +16,9 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/status-im/status-go/account"
+	//	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	//	"github.com/status-im/status-go/account"
 	"github.com/status-im/status-go/contracts/celer"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/rpc"
 
 	"github.com/status-im/status-go/params"
@@ -47,13 +46,13 @@ type CBridge struct {
 	testTransferConfig *cbridge.GetTransferConfigsResponse
 }
 
-func NewCbridge(rpcClient *rpc.Client, transactor *transactions.Transactor, tokenManager *token.Manager) *CBridge {
-	return &CBridge{
-		rpcClient:    rpcClient,
-		transactor:   transactor,
-		tokenManager: tokenManager,
-	}
-}
+// func NewCbridge(rpcClient *rpc.Client, transactor *transactions.Transactor, tokenManager *token.Manager) *CBridge {
+// 	return &CBridge{
+// 		rpcClient:    rpcClient,
+// 		transactor:   transactor,
+// 		tokenManager: tokenManager,
+// 	}
+// }
 
 func (s *CBridge) Name() string {
 	return "CBridge"
@@ -307,64 +306,64 @@ func (s *CBridge) GetContractAddress(network *params.Network, token *token.Token
 	return nil
 }
 
-func (s *CBridge) sendOrBuild(sendArgs *TransactionBridge, signerFn bind.SignerFn) (*ethTypes.Transaction, error) {
-	fromNetwork := s.rpcClient.NetworkManager.Find(sendArgs.ChainID)
-	if fromNetwork == nil {
-		return nil, errors.New("network not found")
-	}
-	token := s.tokenManager.FindToken(fromNetwork, sendArgs.CbridgeTx.Symbol)
-	if token == nil {
-		return nil, errors.New("token not found")
-	}
-	addrs := s.GetContractAddress(fromNetwork, nil)
-	if addrs == nil {
-		return nil, errors.New("contract not found")
-	}
+// func (s *CBridge) sendOrBuild(sendArgs *TransactionBridge, signerFn bind.SignerFn) (*ethTypes.Transaction, error) {
+// 	fromNetwork := s.rpcClient.NetworkManager.Find(sendArgs.ChainID)
+// 	if fromNetwork == nil {
+// 		return nil, errors.New("network not found")
+// 	}
+// 	token := s.tokenManager.FindToken(fromNetwork, sendArgs.CbridgeTx.Symbol)
+// 	if token == nil {
+// 		return nil, errors.New("token not found")
+// 	}
+// 	addrs := s.GetContractAddress(fromNetwork, nil)
+// 	if addrs == nil {
+// 		return nil, errors.New("contract not found")
+// 	}
 
-	backend, err := s.rpcClient.EthClient(sendArgs.ChainID)
-	if err != nil {
-		return nil, err
-	}
-	contract, err := celer.NewCeler(*addrs, backend)
-	if err != nil {
-		return nil, err
-	}
+// 	backend, err := s.rpcClient.EthClient(sendArgs.ChainID)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	contract, err := celer.NewCeler(*addrs, backend)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	txOpts := sendArgs.CbridgeTx.ToTransactOpts(signerFn)
-	if token.IsNative() {
-		return contract.SendNative(
-			txOpts,
-			sendArgs.CbridgeTx.Recipient,
-			(*big.Int)(sendArgs.CbridgeTx.Amount),
-			sendArgs.CbridgeTx.ChainID,
-			uint64(time.Now().UnixMilli()),
-			500,
-		)
-	}
+// 	txOpts := sendArgs.CbridgeTx.ToTransactOpts(signerFn)
+// 	if token.IsNative() {
+// 		return contract.SendNative(
+// 			txOpts,
+// 			sendArgs.CbridgeTx.Recipient,
+// 			(*big.Int)(sendArgs.CbridgeTx.Amount),
+// 			sendArgs.CbridgeTx.ChainID,
+// 			uint64(time.Now().UnixMilli()),
+// 			500,
+// 		)
+// 	}
 
-	return contract.Send(
-		txOpts,
-		sendArgs.CbridgeTx.Recipient,
-		token.Address,
-		(*big.Int)(sendArgs.CbridgeTx.Amount),
-		sendArgs.CbridgeTx.ChainID,
-		uint64(time.Now().UnixMilli()),
-		500,
-	)
-}
+// 	return contract.Send(
+// 		txOpts,
+// 		sendArgs.CbridgeTx.Recipient,
+// 		token.Address,
+// 		(*big.Int)(sendArgs.CbridgeTx.Amount),
+// 		sendArgs.CbridgeTx.ChainID,
+// 		uint64(time.Now().UnixMilli()),
+// 		500,
+// 	)
+// }
 
-func (s *CBridge) Send(sendArgs *TransactionBridge, verifiedAccount *account.SelectedExtKey) (types.Hash, error) {
-	tx, err := s.sendOrBuild(sendArgs, getSigner(sendArgs.ChainID, sendArgs.CbridgeTx.From, verifiedAccount))
-	if err != nil {
-		return types.HexToHash(""), err
-	}
+// func (s *CBridge) Send(sendArgs *TransactionBridge, verifiedAccount *account.SelectedExtKey) (types.Hash, error) {
+// 	tx, err := s.sendOrBuild(sendArgs, getSigner(sendArgs.ChainID, sendArgs.CbridgeTx.From, verifiedAccount))
+// 	if err != nil {
+// 		return types.HexToHash(""), err
+// 	}
 
-	return types.Hash(tx.Hash()), nil
-}
+// 	return types.Hash(tx.Hash()), nil
+// }
 
-func (s *CBridge) BuildTransaction(sendArgs *TransactionBridge) (*ethTypes.Transaction, error) {
-	return s.sendOrBuild(sendArgs, nil)
-}
+// func (s *CBridge) BuildTransaction(sendArgs *TransactionBridge) (*ethTypes.Transaction, error) {
+// 	return s.sendOrBuild(sendArgs, nil)
+// }
 
 func (s *CBridge) CalculateAmountOut(from, to *params.Network, amountIn *big.Int, symbol string) (*big.Int, error) {
 	amt, err := s.estimateAmt(from, to, amountIn, symbol)

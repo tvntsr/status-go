@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
+	//	"github.com/ethereum/go-ethereum/p2p"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/status-im/status-go/account"
@@ -102,7 +102,7 @@ func NewService(
 
 	communityManager := community.NewManager(db, mediaServer, feed)
 	balanceCacher := balance.NewCacherWithTTL(5 * time.Minute)
-	tokenManager := token.NewTokenManager(db, rpcClient, communityManager, rpcClient.NetworkManager, appDB, mediaServer, feed)
+	tokenManager := &token.Manager{} // := token.NewTokenManager(db, rpcClient, communityManager, rpcClient.NetworkManager, appDB, mediaServer, feed)
 	savedAddressesManager := &SavedAddressesManager{db: db}
 	transactionManager := transfer.NewTransactionManager(db, gethManager, transactor, config, accountsDB, pendingTxManager, feed)
 	blockChainState := blockchainstate.NewBlockChainState()
@@ -148,7 +148,7 @@ func NewService(
 	collectiblesManager := collectibles.NewManager(db, rpcClient, communityManager, contractOwnershipProviders, accountOwnershipProviders, collectibleDataProviders, collectionDataProviders, mediaServer, feed)
 	collectibles := collectibles.NewService(db, feed, accountsDB, accountFeed, settingsFeed, communityManager, rpcClient.NetworkManager, collectiblesManager)
 
-	activity := activity.NewService(db, tokenManager, collectiblesManager, feed, pendingTxManager)
+	//activity := activity.NewService(db, tokenManager, collectiblesManager, feed, pendingTxManager)
 
 	walletconnect := walletconnect.NewService(db, rpcClient.NetworkManager, accountsDB, transactionManager, gethManager, feed, config)
 
@@ -176,7 +176,7 @@ func NewService(
 		reader:                reader,
 		history:               history,
 		currency:              currency,
-		activity:              activity,
+		//		activity:              activity,
 		decoder:               NewDecoder(),
 		blockChainState:       blockChainState,
 		keycardPairings:       NewKeycardPairings(),
@@ -261,9 +261,9 @@ func (s *Service) APIs() []gethrpc.API {
 }
 
 // Protocols returns list of p2p protocols.
-func (s *Service) Protocols() []p2p.Protocol {
-	return nil
-}
+// func (s *Service) Protocols() []p2p.Protocol {
+// 	return nil
+// }
 
 func (s *Service) IsStarted() bool {
 	return s.started

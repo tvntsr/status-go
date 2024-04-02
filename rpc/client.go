@@ -18,7 +18,7 @@ import (
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc/chain"
 	"github.com/status-im/status-go/rpc/network"
-	"github.com/status-im/status-go/services/rpcstats"
+	//	"github.com/status-im/status-go/services/rpcstats"
 	"github.com/status-im/status-go/services/wallet/common"
 )
 
@@ -281,7 +281,7 @@ func (c *Client) Call(result interface{}, chainID uint64, method string, args ..
 // It uses custom routing scheme for calls.
 // If there are any local handlers registered for this call, they will handle it.
 func (c *Client) CallContext(ctx context.Context, result interface{}, chainID uint64, method string, args ...interface{}) error {
-	rpcstats.CountCall(method)
+	//	rpcstats.CountCall(method)
 	if c.router.routeBlocked(method) {
 		return ErrMethodNotFound
 	}

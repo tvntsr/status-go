@@ -376,14 +376,14 @@ func (c *transfersCommand) markMultiTxTokensAsPreviouslyOwned(ctx context.Contex
 	if multiTransaction == nil {
 		return
 	}
-	if len(multiTransaction.ToAsset) > 0 && multiTransaction.ToNetworkID > 0 {
-		token := c.tokenManager.GetToken(multiTransaction.ToNetworkID, multiTransaction.ToAsset)
-		_, _ = c.tokenManager.MarkAsPreviouslyOwnedToken(token, ownerAddress)
-	}
-	if len(multiTransaction.FromAsset) > 0 && multiTransaction.FromNetworkID > 0 {
-		token := c.tokenManager.GetToken(multiTransaction.FromNetworkID, multiTransaction.FromAsset)
-		_, _ = c.tokenManager.MarkAsPreviouslyOwnedToken(token, ownerAddress)
-	}
+	// if len(multiTransaction.ToAsset) > 0 && multiTransaction.ToNetworkID > 0 {
+	// 	token := c.tokenManager.GetToken(multiTransaction.ToNetworkID, multiTransaction.ToAsset)
+	// 	_, _ = c.tokenManager.MarkAsPreviouslyOwnedToken(token, ownerAddress)
+	// }
+	// if len(multiTransaction.FromAsset) > 0 && multiTransaction.FromNetworkID > 0 {
+	// 	token := c.tokenManager.GetToken(multiTransaction.FromNetworkID, multiTransaction.FromAsset)
+	// 	_, _ = c.tokenManager.MarkAsPreviouslyOwnedToken(token, ownerAddress)
+	// }
 }
 
 func (c *transfersCommand) checkAndProcessSwapMultiTx(ctx context.Context, tx Transaction) (bool, error) {
@@ -433,22 +433,22 @@ func (c *transfersCommand) checkAndProcessBridgeMultiTx(ctx context.Context, tx 
 }
 
 func (c *transfersCommand) processUnknownErc20CommunityTransactions(ctx context.Context, allTransfers []Transfer) {
-	for _, tx := range allTransfers {
-		// To can be nil in case of erc20 contract creation
-		if tx.Type == w_common.Erc20Transfer && tx.Transaction.To() != nil {
-			// Find token in db or if this is a community token, find its metadata
-			token := c.tokenManager.FindOrCreateTokenByAddress(ctx, tx.NetworkID, *tx.Transaction.To())
-			if token != nil {
-				isFirst := false
-				if token.Verified || token.CommunityData != nil {
-					isFirst, _ = c.tokenManager.MarkAsPreviouslyOwnedToken(token, tx.Address)
-				}
-				if token.CommunityData != nil {
-					go c.tokenManager.SignalCommunityTokenReceived(tx.Address, tx.ID, tx.TokenValue, token, isFirst)
-				}
-			}
-		}
-	}
+	// for _, tx := range allTransfers {
+	// 	// To can be nil in case of erc20 contract creation
+	// 	if tx.Type == w_common.Erc20Transfer && tx.Transaction.To() != nil {
+	// 		// Find token in db or if this is a community token, find its metadata
+	// 		token := c.tokenManager.FindOrCreateTokenByAddress(ctx, tx.NetworkID, *tx.Transaction.To())
+	// 		if token != nil {
+	// 			isFirst := false
+	// 			if token.Verified || token.CommunityData != nil {
+	// 				isFirst, _ = c.tokenManager.MarkAsPreviouslyOwnedToken(token, tx.Address)
+	// 			}
+	// 			if token.CommunityData != nil {
+	// 				go c.tokenManager.SignalCommunityTokenReceived(tx.Address, tx.ID, tx.TokenValue, token, isFirst)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 func (c *transfersCommand) processMultiTransactions(ctx context.Context, allTransfers []Transfer) error {

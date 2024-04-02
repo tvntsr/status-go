@@ -10,12 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/status-im/status-go/account"
-	"github.com/status-im/status-go/eth-node/crypto"
-	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/params"
 	"github.com/status-im/status-go/rpc/network"
 	"github.com/status-im/status-go/services/wallet/transfer"
+	"github.com/status-im/status-go/transactions"
 )
 
 type Service struct {
@@ -174,7 +173,7 @@ func (s *Service) SessionRequest(request SessionRequest) (response *transfer.TxR
 }
 
 func (s *Service) AuthRequest(address common.Address, authMessage string) (*transfer.TxResponse, error) {
-	account, err := s.accountsDB.GetAccountByAddress(types.Address(address))
+	account, err := s.accountsDB.GetAccountByAddress(accounts.Address(address))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active account: %w", err)
 	}
@@ -184,14 +183,14 @@ func (s *Service) AuthRequest(address common.Address, authMessage string) (*tran
 		return nil, err
 	}
 
-	byteArray := []byte(authMessage)
-	hash := crypto.TextHash(byteArray)
+	//byteArray := []byte(authMessage)
+	//hash := crypto.TextHash(byteArray)
 
 	return &transfer.TxResponse{
 		KeyUID:        account.KeyUID,
-		Address:       account.Address,
+		Address:      transactions.Address(account.Address),
 		AddressPath:   account.Path,
 		SignOnKeycard: kp.MigratedToKeycard(),
-		MessageToSign: types.HexBytes(hash),
+		//MessageToSign: types.HexBytes(hash),
 	}, nil
 }

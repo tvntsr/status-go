@@ -15,12 +15,12 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
-	statustypes "github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/multiaccounts/accounts"
 	"github.com/status-im/status-go/params"
 	statusrpc "github.com/status-im/status-go/rpc"
 	"github.com/status-im/status-go/rpc/chain"
 	"github.com/status-im/status-go/rpc/network"
+	"github.com/status-im/status-go/transactions"
 
 	"github.com/status-im/status-go/services/wallet/balance"
 	"github.com/status-im/status-go/services/wallet/market"
@@ -80,7 +80,7 @@ func (s *Service) Stop() {
 	s.stopTransfersWatcher()
 }
 
-func (s *Service) triggerEvent(eventType walletevent.EventType, account statustypes.Address, message string) {
+func (s *Service) triggerEvent(eventType walletevent.EventType, account transactions.Address, message string) {
 	s.eventFeed.Send(walletevent.Event{
 		Type: eventType,
 		Accounts: []common.Address{
@@ -100,10 +100,10 @@ func (s *Service) Start() {
 
 		err := s.updateBalanceHistory(s.serviceContext)
 		if s.serviceContext.Err() != nil {
-			s.triggerEvent(EventBalanceHistoryUpdateFinished, statustypes.Address{}, "Service canceled")
+			s.triggerEvent(EventBalanceHistoryUpdateFinished, transactions.Address{}, "Service canceled")
 		}
 		if err != nil {
-			s.triggerEvent(EventBalanceHistoryUpdateFinishedWithError, statustypes.Address{}, err.Error())
+			s.triggerEvent(EventBalanceHistoryUpdateFinishedWithError, transactions.Address{}, err.Error())
 		}
 	}()
 }
@@ -338,11 +338,11 @@ func (s *Service) decimalsForToken(tokenSymbol string, chainID uint64) (int, err
 	if network == nil {
 		return 0, errors.New("network not found")
 	}
-	token := s.tokenManager.FindToken(network, tokenSymbol)
-	if token == nil {
+	// token := s.tokenManager.FindToken(network, tokenSymbol)
+	// if token == nil {
 		return 0, errors.New("token not found")
-	}
-	return int(token.Decimals), nil
+	//	}
+	//return int(token.Decimals), nil
 }
 
 func tokenToValue(tokenCount *big.Int, mainDenominationValue float32, weisInOneMain *big.Float) float64 {
@@ -371,10 +371,10 @@ func (s *Service) updateBalanceHistory(ctx context.Context) error {
 		return err
 	}
 
-	areTestNetworksEnabled, err := s.accountsDB.GetTestNetworksEnabled()
-	if err != nil {
-		return err
-	}
+	// areTestNetworksEnabled, err := s.accountsDB.GetTestNetworksEnabled()
+	// if err != nil {
+	// 	return err
+	// }
 
 	onlyEnabledNetworks := false
 	networks, err := s.networkManager.Get(onlyEnabledNetworks)
@@ -383,52 +383,52 @@ func (s *Service) updateBalanceHistory(ctx context.Context) error {
 	}
 
 	for _, address := range addresses {
-		s.triggerEvent(EventBalanceHistoryUpdateStarted, address, "")
+		s.triggerEvent(EventBalanceHistoryUpdateStarted, transactions.Address(address), "")
 
 		for _, network := range networks {
-			if network.IsTest != areTestNetworksEnabled {
-				continue
-			}
+			// if network.IsTest != areTestNetworksEnabled {
+			// 	continue
+			// }
 
 			entries, err := s.balance.db.getEntriesWithoutBalances(network.ChainID, common.Address(address))
 			if err != nil {
-				log.Error("Error getting blocks without balances", "chainID", network.ChainID, "address", address.String(), "err", err)
+				//	log.Error("Error getting blocks without balances", "chainID", network.ChainID, "address", address.String(), "err", err)
 				return err
 			}
 
-			log.Debug("Blocks without balances", "chainID", network.ChainID, "address", address.String(), "entries", entries)
+			//log.Debug("Blocks without balances", "chainID", network.ChainID, "address", address.String(), "entries", entries)
 
 			client, err := s.rpcClient.EthClient(network.ChainID)
 			if err != nil {
-				log.Error("Error getting client", "chainID", network.ChainID, "address", address.String(), "err", err)
+				//log.Error("Error getting client", "chainID", network.ChainID, "address", address.String(), "err", err)
 				return err
 			}
 
-			err = s.addEntriesToDB(ctx, client, network, address, entries)
+			err = s.addEntriesToDB(ctx, client, network, transactions.Address(address), entries)
 			if err != nil {
 				return err
 			}
 		}
-		s.triggerEvent(EventBalanceHistoryUpdateFinished, address, "")
+		s.triggerEvent(EventBalanceHistoryUpdateFinished, transactions.Address(address), "")
 	}
 
 	log.Debug("updateBalanceHistory finished")
 	return nil
 }
 
-func (s *Service) addEntriesToDB(ctx context.Context, client chain.ClientInterface, network *params.Network, address statustypes.Address, entries []*entry) (err error) {
+func (s *Service) addEntriesToDB(ctx context.Context, client chain.ClientInterface, network *params.Network, address transactions.Address, entries []*entry) (err error) {
 	for _, entry := range entries {
 		var balance *big.Int
 		// tokenAddess is zero for native currency
 		if (entry.tokenAddress == common.Address{}) {
 			// Check in cache
 			balance = s.balanceCache.GetBalance(common.Address(address), network.ChainID, entry.block)
-			log.Debug("Balance from cache", "chainID", network.ChainID, "address", address.String(), "block", entry.block, "balance", balance)
+			//log.Debug("Balance from cache", "chainID", network.ChainID, "address", address.String(), "block", entry.block, "balance", balance)
 
 			if balance == nil {
 				balance, err = client.BalanceAt(ctx, common.Address(address), entry.block)
 				if balance == nil {
-					log.Error("Error getting balance", "chainID", network.ChainID, "address", address.String(), "err", err, "unwrapped", errors.Unwrap(err))
+					//log.Error("Error getting balance", "chainID", network.ChainID, "address", address.String(), "err", err, "unwrapped", errors.Unwrap(err))
 					return err
 				}
 				time.Sleep(50 * time.Millisecond) // TODO Remove this sleep after fixing exceeding rate limit
@@ -438,7 +438,7 @@ func (s *Service) addEntriesToDB(ctx context.Context, client chain.ClientInterfa
 			// Check token first if it is supported
 			token := s.tokenManager.FindTokenByAddress(network.ChainID, entry.tokenAddress)
 			if token == nil {
-				log.Warn("Token not found", "chainID", network.ChainID, "address", address.String(), "tokenAddress", entry.tokenAddress.String())
+				//log.Warn("Token not found", "chainID", network.ChainID, "address", address.String(), "tokenAddress", entry.tokenAddress.String())
 				// TODO Add "supported=false" flag to such tokens to avoid checking them again and again
 				continue // Skip token that we don't have symbol for. For example we don't have tokens in store for goerli optimism
 			} else {
@@ -446,11 +446,11 @@ func (s *Service) addEntriesToDB(ctx context.Context, client chain.ClientInterfa
 			}
 
 			// Check balance for token
-			balance, err = s.tokenManager.GetTokenBalanceAt(ctx, client, common.Address(address), entry.tokenAddress, entry.block)
-			log.Debug("Balance from token manager", "chainID", network.ChainID, "address", address.String(), "block", entry.block, "balance", balance)
+			//balance, err = s.tokenManager.GetTokenBalanceAt(ctx, client, common.Address(address), entry.tokenAddress, entry.block)
+			//log.Debug("Balance from token manager", "chainID", network.ChainID, "address", address.String(), "block", entry.block, "balance", balance)
 
 			if err != nil {
-				log.Error("Error getting token balance", "chainID", network.ChainID, "address", address.String(), "tokenAddress", entry.tokenAddress.String(), "err", err)
+				//log.Error("Error getting token balance", "chainID", network.ChainID, "address", address.String(), "tokenAddress", entry.tokenAddress.String(), "err", err)
 				return err
 			}
 		}
@@ -458,7 +458,7 @@ func (s *Service) addEntriesToDB(ctx context.Context, client chain.ClientInterfa
 		entry.balance = balance
 		err = s.balance.db.add(entry)
 		if err != nil {
-			log.Error("Error adding balance", "chainID", network.ChainID, "address", address.String(), "err", err)
+			//log.Error("Error adding balance", "chainID", network.ChainID, "address", address.String(), "err", err)
 			return err
 		}
 	}
@@ -500,7 +500,7 @@ func (s *Service) startTransfersWatcher() {
 			unique := removeDuplicates(entries)
 			log.Debug("Entries after filtering", "entries", entries, "unique", unique)
 
-			err = s.addEntriesToDB(s.serviceContext, client, network, statustypes.Address(address), unique)
+			err = s.addEntriesToDB(s.serviceContext, client, network, transactions.Address(address), unique)
 			if err != nil {
 				log.Error("Error adding entries to DB", "chainID", chainID, "address", address.String(), "err", err)
 				continue

@@ -1,2 +1,0 @@
-ALTER TABLE settings ADD COLUMN bio TEXT NOT NULL DEFAULT "";
-UPDATE settings SET bio = "";
