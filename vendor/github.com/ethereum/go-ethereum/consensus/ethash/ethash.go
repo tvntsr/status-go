@@ -116,7 +116,7 @@ func memoryMapFile(file *os.File, write bool) (mmap.MMap, []uint32, error) {
 	var view []uint32
 	header := (*reflect.SliceHeader)(unsafe.Pointer(&view))
 	header.Data = (*reflect.SliceHeader)(unsafe.Pointer(&mem)).Data
-	header.Cap = len(mem) / 4
+	//header.Cap = len(mem) / 4
 	header.Len = header.Cap
 	return mem, view, nil
 }
@@ -159,9 +159,9 @@ func memoryMapAndGenerate(path string, size uint64, lock bool, generator func(bu
 	if err := dump.Close(); err != nil {
 		return nil, nil, nil, err
 	}
-	if err := os.Rename(temp, path); err != nil {
-		return nil, nil, nil, err
-	}
+	// if err := os.Rename(temp, path); err != nil {
+	// 	return nil, nil, nil, err
+	// }
 	return memoryMap(path, lock)
 }
 

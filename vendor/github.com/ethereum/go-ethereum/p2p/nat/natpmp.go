@@ -105,26 +105,29 @@ var (
 // TODO: improve this. We currently assume that (on most networks)
 // the router is X.X.X.1 in a local LAN range.
 func potentialGateways() (gws []net.IP) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil
-	}
-	for _, iface := range ifaces {
-		ifaddrs, err := iface.Addrs()
-		if err != nil {
-			return gws
-		}
-		for _, addr := range ifaddrs {
-			if x, ok := addr.(*net.IPNet); ok {
-				if lan10.Contains(x.IP) || lan176.Contains(x.IP) || lan192.Contains(x.IP) {
-					ip := x.IP.Mask(x.Mask).To4()
-					if ip != nil {
-						ip[3] = ip[3] | 0x01
-						gws = append(gws, ip)
-					}
-				}
-			}
-		}
-	}
-	return gws
+	// ::FIXME:: not implemented for wasm
+	return nil
+
+	// ifaces, err := net.Interfaces()
+	// if err != nil {
+	// 	return nil
+	// }
+	// for _, iface := range ifaces {
+	// 	ifaddrs, err := iface.Addrs()
+	// 	if err != nil {
+	// 		return gws
+	// 	}
+	// 	for _, addr := range ifaddrs {
+	// 		if x, ok := addr.(*net.IPNet); ok {
+	// 			if lan10.Contains(x.IP) || lan176.Contains(x.IP) || lan192.Contains(x.IP) {
+	// 				ip := x.IP.Mask(x.Mask).To4()
+	// 				if ip != nil {
+	// 					ip[3] = ip[3] | 0x01
+	// 					gws = append(gws, ip)
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// return gws
 }

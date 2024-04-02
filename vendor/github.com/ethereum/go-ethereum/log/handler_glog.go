@@ -18,9 +18,7 @@ package log
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -180,23 +178,6 @@ func (h *GlogHandler) BacktraceAt(location string) error {
 // and backtrace filters, finally emitting it if either allow it through.
 func (h *GlogHandler) Log(r *Record) error {
 	// If backtracing is requested, check whether this is the callsite
-	if atomic.LoadUint32(&h.backtrace) > 0 {
-		// Everything below here is slow. Although we could cache the call sites the
-		// same way as for vmodule, backtracing is so rare it's not worth the extra
-		// complexity.
-		h.lock.RLock()
-		match := h.location == r.Call.String()
-		h.lock.RUnlock()
-
-		if match {
-			// Callsite matched, raise the log level to info and gather the stacks
-			r.Lvl = LvlInfo
-
-			buf := make([]byte, 1024*1024)
-			buf = buf[:runtime.Stack(buf, true)]
-			r.Msg += "\n\n" + string(buf)
-		}
-	}
 	// If the global log level allows, fast track logging
 	if atomic.LoadUint32(&h.level) >= uint32(r.Lvl) {
 		return h.origin.Log(r)
@@ -206,27 +187,5 @@ func (h *GlogHandler) Log(r *Record) error {
 		return nil
 	}
 	// Check callsite cache for previously calculated log levels
-	h.lock.RLock()
-	lvl, ok := h.siteCache[r.Call.Frame().PC]
-	h.lock.RUnlock()
-
-	// If we didn't cache the callsite yet, calculate it
-	if !ok {
-		h.lock.Lock()
-		for _, rule := range h.patterns {
-			if rule.pattern.MatchString(fmt.Sprintf("%+s", r.Call)) {
-				h.siteCache[r.Call.Frame().PC], lvl, ok = rule.level, rule.level, true
-				break
-			}
-		}
-		// If no rule matched, remember to drop log the next time
-		if !ok {
-			h.siteCache[r.Call.Frame().PC] = 0
-		}
-		h.lock.Unlock()
-	}
-	if lvl >= r.Lvl {
-		return h.origin.Log(r)
-	}
 	return nil
 }

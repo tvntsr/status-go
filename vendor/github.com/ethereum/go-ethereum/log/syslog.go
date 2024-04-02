@@ -1,5 +1,5 @@
-//go:build !windows && !plan9
-// +build !windows,!plan9
+//go:build !windows && !plan9 && !js
+// +build !windows,!plan9,!js
 
 package log
 

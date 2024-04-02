@@ -23,7 +23,7 @@ import (
 type UnsupportedWitnessVerError byte
 
 func (e UnsupportedWitnessVerError) Error() string {
-	return fmt.Sprintf("unsupported witness version: %#x", e)
+	return "unsupported witness version: " + string(e)
 }
 
 // UnsupportedWitnessProgLenError describes an error where a segwit address
@@ -31,7 +31,7 @@ func (e UnsupportedWitnessVerError) Error() string {
 type UnsupportedWitnessProgLenError int
 
 func (e UnsupportedWitnessProgLenError) Error() string {
-	return fmt.Sprintf("unsupported witness program length: %d", e)
+	return "unsupported witness program length: " + string(e)
 }
 
 var (

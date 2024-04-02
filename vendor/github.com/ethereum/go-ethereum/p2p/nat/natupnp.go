@@ -91,26 +91,29 @@ func (n *upnp) AddMapping(protocol string, extport, intport int, desc string, li
 }
 
 func (n *upnp) internalAddress() (net.IP, error) {
-	devaddr, err := net.ResolveUDPAddr("udp4", n.dev.URLBase.Host)
-	if err != nil {
-		return nil, err
-	}
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	for _, iface := range ifaces {
-		addrs, err := iface.Addrs()
-		if err != nil {
-			return nil, err
-		}
-		for _, addr := range addrs {
-			if x, ok := addr.(*net.IPNet); ok && x.Contains(devaddr.IP) {
-				return x.IP, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("could not find local address in same net as %v", devaddr)
+	// ::FIXME:: not implemented for wasm
+	return nil, fmt.Errorf("not implemented for wasm")
+
+	// devaddr, err := net.ResolveUDPAddr("udp4", n.dev.URLBase.Host)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// ifaces, err := net.Interfaces()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for _, iface := range ifaces {
+	// 	addrs, err := iface.Addrs()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	for _, addr := range addrs {
+	// 		if x, ok := addr.(*net.IPNet); ok && x.Contains(devaddr.IP) {
+	// 			return x.IP, nil
+	// 		}
+	// 	}
+	// }
+	// return nil, fmt.Errorf("could not find local address in same net as %v", devaddr)
 }
 
 func (n *upnp) DeleteMapping(protocol string, extport, intport int) error {

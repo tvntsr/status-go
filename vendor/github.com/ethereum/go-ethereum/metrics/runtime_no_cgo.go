@@ -1,5 +1,5 @@
-//go:build !cgo || appengine || js
-// +build !cgo appengine js
+//go:build !cgo || appengine || wasm
+// +build !cgo appengine wasm
 
 package metrics
 

@@ -1,4 +1,4 @@
-// +build go1.5,!js
+// +build go1.5,!wasm
 
 package metrics
 

@@ -4,7 +4,7 @@
 //
 // Coda Hale's original work: <https://github.com/codahale/metrics>
 
-// +build !js
+// +build !wasm
 
 package metrics
 

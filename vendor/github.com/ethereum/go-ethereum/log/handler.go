@@ -7,8 +7,6 @@ import (
 	"os"
 	"reflect"
 	"sync"
-
-	"github.com/go-stack/stack"
 )
 
 // Handler defines where and how log records are written.
@@ -98,7 +96,6 @@ func (h *closingHandler) Close() error {
 // the calling function to the context with key "caller".
 func CallerFileHandler(h Handler) Handler {
 	return FuncHandler(func(r *Record) error {
-		r.Ctx = append(r.Ctx, "caller", fmt.Sprint(r.Call))
 		return h.Log(r)
 	})
 }
@@ -107,14 +104,8 @@ func CallerFileHandler(h Handler) Handler {
 // the context with key "fn".
 func CallerFuncHandler(h Handler) Handler {
 	return FuncHandler(func(r *Record) error {
-		r.Ctx = append(r.Ctx, "fn", formatCall("%+n", r.Call))
 		return h.Log(r)
 	})
-}
-
-// This function is here to please go vet on Go < 1.8.
-func formatCall(format string, c stack.Call) string {
-	return fmt.Sprintf(format, c)
 }
 
 // CallerStackHandler returns a Handler that adds a stack trace to the context
@@ -122,12 +113,9 @@ func formatCall(format string, c stack.Call) string {
 // call sites inside matching []'s. The most recent call site is listed first.
 // Each call site is formatted according to format. See the documentation of
 // package github.com/go-stack/stack for the list of supported formats.
+
 func CallerStackHandler(format string, h Handler) Handler {
 	return FuncHandler(func(r *Record) error {
-		s := stack.Trace().TrimBelow(r.Call).TrimRuntime()
-		if len(s) > 0 {
-			r.Ctx = append(r.Ctx, "stack", fmt.Sprintf(format, s))
-		}
 		return h.Log(r)
 	})
 }
@@ -270,28 +258,6 @@ func BufferedHandler(bufSize int, h Handler) Handler {
 // it if you write your own Handler.
 func LazyHandler(h Handler) Handler {
 	return FuncHandler(func(r *Record) error {
-		// go through the values (odd indices) and reassign
-		// the values of any lazy fn to the result of its execution
-		hadErr := false
-		for i := 1; i < len(r.Ctx); i += 2 {
-			lz, ok := r.Ctx[i].(Lazy)
-			if ok {
-				v, err := evaluateLazy(lz)
-				if err != nil {
-					hadErr = true
-					r.Ctx[i] = err
-				} else {
-					if cs, ok := v.(stack.CallStack); ok {
-						v = cs.TrimBelow(r.Call).TrimRuntime()
-					}
-					r.Ctx[i] = v
-				}
-			}
-		}
-
-		if hadErr {
-			r.Ctx = append(r.Ctx, errorKey, "bad lazy")
-		}
 
 		return h.Log(r)
 	})

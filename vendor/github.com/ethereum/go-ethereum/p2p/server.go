@@ -592,68 +592,72 @@ func (srv *Server) setupDiscovery() error {
 		listenAddr = srv.DiscAddr
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", listenAddr)
-	if err != nil {
-		return err
-	}
-	conn, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		return err
-	}
-	realaddr := conn.LocalAddr().(*net.UDPAddr)
-	srv.log.Debug("UDP listener up", "addr", realaddr)
-	if srv.NAT != nil {
-		if !realaddr.IP.IsLoopback() {
-			srv.loopWG.Add(1)
-			go func() {
-				nat.Map(srv.NAT, srv.quit, "udp", realaddr.Port, realaddr.Port, "ethereum discovery")
-				srv.loopWG.Done()
-			}()
-		}
-	}
-	srv.localnode.SetFallbackUDP(realaddr.Port)
+	// ::FIXME:: not implemented for wasm
+	listenAddr = listenAddr
+	return fmt.Errorf("not implemented for wasm")
 
-	// Discovery V4
-	var unhandled chan discover.ReadPacket
-	var sconn *sharedUDPConn
-	if !srv.NoDiscovery {
-		if srv.DiscoveryV5 {
-			unhandled = make(chan discover.ReadPacket, 100)
-			sconn = &sharedUDPConn{conn, unhandled}
-		}
-		cfg := discover.Config{
-			PrivateKey:  srv.PrivateKey,
-			NetRestrict: srv.NetRestrict,
-			Bootnodes:   srv.BootstrapNodes,
-			Unhandled:   unhandled,
-			Log:         srv.log,
-		}
-		ntab, err := discover.ListenUDP(conn, srv.localnode, cfg)
-		if err != nil {
-			return err
-		}
-		srv.ntab = ntab
-		srv.discmix.AddSource(ntab.RandomNodes())
-	}
+	// addr, err := net.ResolveUDPAddr("udp", listenAddr)
+	// if err != nil {
+	// 	return err
+	// }
+	// conn, err := net.ListenUDP("udp", addr)
+	// if err != nil {
+	// 	return err
+	// }
+	// realaddr := conn.LocalAddr().(*net.UDPAddr)
+	// srv.log.Debug("UDP listener up", "addr", realaddr)
+	// if srv.NAT != nil {
+	// 	if !realaddr.IP.IsLoopback() {
+	// 		srv.loopWG.Add(1)
+	// 		go func() {
+	// 			nat.Map(srv.NAT, srv.quit, "udp", realaddr.Port, realaddr.Port, "ethereum discovery")
+	// 			srv.loopWG.Done()
+	// 		}()
+	// 	}
+	// }
+	// srv.localnode.SetFallbackUDP(realaddr.Port)
 
-	// Discovery V5
-	if srv.DiscoveryV5 {
-		var ntab *discv5.Network
-		var err error
-		if sconn != nil {
-			ntab, err = discv5.ListenUDP(srv.PrivateKey, sconn, "", srv.NetRestrict)
-		} else {
-			ntab, err = discv5.ListenUDP(srv.PrivateKey, conn, "", srv.NetRestrict)
-		}
-		if err != nil {
-			return err
-		}
-		if err := ntab.SetFallbackNodes(srv.BootstrapNodesV5); err != nil {
-			return err
-		}
-		srv.DiscV5 = ntab
-	}
-	return nil
+	// // Discovery V4
+	// var unhandled chan discover.ReadPacket
+	// var sconn *sharedUDPConn
+	// if !srv.NoDiscovery {
+	// 	if srv.DiscoveryV5 {
+	// 		unhandled = make(chan discover.ReadPacket, 100)
+	// 		sconn = &sharedUDPConn{conn, unhandled}
+	// 	}
+	// 	cfg := discover.Config{
+	// 		PrivateKey:  srv.PrivateKey,
+	// 		NetRestrict: srv.NetRestrict,
+	// 		Bootnodes:   srv.BootstrapNodes,
+	// 		Unhandled:   unhandled,
+	// 		Log:         srv.log,
+	// 	}
+	// 	ntab, err := discover.ListenUDP(conn, srv.localnode, cfg)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	srv.ntab = ntab
+	// 	srv.discmix.AddSource(ntab.RandomNodes())
+	// }
+
+	// // Discovery V5
+	// if srv.DiscoveryV5 {
+	// 	var ntab *discv5.Network
+	// 	var err error
+	// 	if sconn != nil {
+	// 		ntab, err = discv5.ListenUDP(srv.PrivateKey, sconn, "", srv.NetRestrict)
+	// 	} else {
+	// 		ntab, err = discv5.ListenUDP(srv.PrivateKey, conn, "", srv.NetRestrict)
+	// 	}
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	if err := ntab.SetFallbackNodes(srv.BootstrapNodesV5); err != nil {
+	// 		return err
+	// 	}
+	// 	srv.DiscV5 = ntab
+	// }
+	// return nil
 }
 
 func (srv *Server) setupDialScheduler() {

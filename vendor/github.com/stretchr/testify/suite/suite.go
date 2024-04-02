@@ -232,9 +232,9 @@ func runTests(t testing.TB, tests []testing.InternalTest) {
 
 	r, ok := t.(runner)
 	if !ok { // backwards compatibility with Go 1.6 and below
-		if !testing.RunTests(allTestsFilter, tests) {
+		//	if !testing.RunTests(allTestsFilter, tests) {
 			t.Fail()
-		}
+		//}
 		return
 	}
 
