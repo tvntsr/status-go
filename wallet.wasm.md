@@ -12,7 +12,7 @@ The `Dockerfile` is utilized for building the wallet using standard Go. The foll
 - `TARGET=js`
 - `TARGET=wasip1` (default)
 
-**Example usage:**
+**Usage example:**
 
 ```bash
 docker build -f Dockerfile --build-arg TARGET=js -t status-go-wasm .
@@ -27,7 +27,7 @@ The following build options are available:
 - `TARGET=wasm`
 - `TARGET=wasi` (default)
 
-**Example usage:**
+**Usage example:**
 
 ```bash
 docker build -f Dockerfile.tinygo --build-arg TARGET=js -t status-go-wasm .
